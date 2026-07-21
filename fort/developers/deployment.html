@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-hosting — Fort</title>
+  <meta name="description" content="Run Fort yourself: the single-binary subcommands, ports, the environment contract, Docker and Kubernetes assets, Atlas migrations, health probes and a production checklist.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html" class="active">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Self-hosting</h1>
+        <p class="lead">Fort is built to be run by you: one Go binary, one PostgreSQL database, one NATS server, and an optional Next.js dashboard. No SaaS dependency, no per-seat vendor bill — your auth authority runs where your data lives.</p>
+
+        <h2>One binary, five subcommands</h2>
+        <pre><code>fort <span class="k">serve</span>      <span class="c"># production: HTTP gateway on FORT_HTTP_ADDR</span>
+fort <span class="k">start</span>      <span class="c"># dev: docker compose up (db + NATS) → migrate → serve</span>
+fort <span class="k">migrate</span>    <span class="c"># apply Atlas migrations (incremental, idempotent)</span>
+fort <span class="k">reset</span>      <span class="c"># drop + re-apply all migrations</span>
+fort <span class="k">seed</span>       <span class="c"># seed admin user + platform rows + fixtures</span>
+
+<span class="c"># plus a plugin CLI for DB-driven plugins:</span>
+fort <span class="k">plugin</span> list | enable | disable | generate</code></pre>
+        <p>The repository's <code>Makefile</code> wraps these: <code>make start</code>, <code>make migrate</code>, <code>make seed</code>, <code>make test</code>, <code>make build</code> (→ <code>./bin/fort</code>).</p>
+
+        <h2>Ports</h2>
+        <p>Default local topology (all four are configurable through the env contract below):</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Port</th><th>Component</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>:8213</td><td>Fort HTTP gateway</td><td>The API surface — REST, gateway core, MCP servers.</td></tr>
+            <tr><td>:5445</td><td><code>fort_db</code> — ParadeDB (Postgres 17)</td><td>Fort's own database. No other product connects to it — ever.</td></tr>
+            <tr><td>:4245</td><td>Fort NATS (JetStream)</td><td>Publishes <a href="events.html"><code>fort.*</code> events</a>.</td></tr>
+            <tr><td>:3213</td><td>Web dashboard (Next.js)</td><td>Optional admin UI; proxies <code>/api/v1/*</code> to the gateway — the browser never calls :8213 directly.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Environment contract</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>Variable</th><th>Required</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>FORT_HTTP_ADDR</td><td>Yes</td><td>Gateway listen address (default <code>:8213</code>).</td></tr>
+            <tr><td>FORT_DATABASE_URL</td><td>Yes</td><td>Postgres DSN for <code>fort_db</code> (ParadeDB pg17; <code>localhost:5445</code> locally).</td></tr>
+            <tr><td>FORT_NATS_URL</td><td>Yes</td><td>Fort's NATS server (<code>nats://localhost:4245</code>; <code>wss://</code> also supported).</td></tr>
+            <tr><td>FORT_JWT_SECRET</td><td>Yes</td><td>HS256 signing secret. The single most sensitive value in the deployment — see the checklist below.</td></tr>
+            <tr><td>FORT_CORS_ORIGINS</td><td>Yes</td><td>Comma-separated browser-origin allowlist. Never <code>*</code>.</td></tr>
+            <tr><td>TOTP_ENCRYPTION_KEY</td><td>For 2FA</td><td>Encrypts stored TOTP secrets; required before any 2FA enroll/verify works. Generate with <code>openssl rand -base64 32</code>.</td></tr>
+            <tr><td>AUTH_EMAIL_DRIVER</td><td>For OTP / forgot</td><td>Email delivery driver (e.g. <code>smtp</code>; <code>log</code> for dev). OTP, magic-link and forgot-password endpoints depend on it.</td></tr>
+            <tr><td>APP_ENV</td><td>Yes</td><td>Set <code>production</code> to disable the dev conveniences (dev admin seed, one-click dev-login).</td></tr>
+            <tr><td>NEXT_PUBLIC_FORT_URL</td><td>Dashboard</td><td>Where the web dashboard's rewrite sends <code>/api/v1/*</code>.</td></tr>
+          </tbody>
+        </table>
+        <p>Optional seams (each degrades gracefully when unset): <code>FORT_GOTRUE_URL</code> (self-hosted GoTrue interop), <code>MOTOR_INGEST_URL</code>/<code>MOTOR_DSN</code> (log shipping/observability), <code>CORTEX_HTTP_ADDR</code>/<code>CORTEX_TOKEN</code> (AI seam), <code>FORT_STORAGE_URL</code>/<code>FORT_STORAGE_KEY</code> (storage backend). A commented template ships as <code>.env.example</code> in the repository.</p>
+
+        <h2>Database &amp; migrations</h2>
+        <p><code>db/schema.sql</code> is the canonical declared schema; <a href="https://atlasgo.io">Atlas</a> (<code>db/atlas.hcl</code>) diffs it into ordered migration files under <code>db/migrations/</code>, applied by <code>fort migrate</code>. Query code for the newer domains is generated with sqlc from <code>db/queries/</code>. Fort bootstraps the Supabase-convention <code>auth.users</code> table itself — it does not run a GoTrue daemon by default, but a self-hosted GoTrue can own the same schema and Fort's handlers work against either layout.</p>
+        <pre><code>make migrate     <span class="c"># apply pending migrations</span>
+make atlas       <span class="c"># diff schema.sql → a new migration file</span>
+make sqlc        <span class="c"># regenerate query code</span></code></pre>
+
+        <h2>Containers &amp; Kubernetes</h2>
+        <p>Deployment assets ship in the repository under <code>infra/</code>:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Path</th><th>What</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>infra/docker/Dockerfile.backend</td><td>The <code>fort</code> binary image.</td></tr>
+            <tr><td>infra/docker/Dockerfile.web</td><td>The Next.js dashboard image.</td></tr>
+            <tr><td>infra/docker/cloudbuild.web.yaml</td><td>Cloud Build recipe for the web image.</td></tr>
+            <tr><td>infra/k8s/deployment.yaml</td><td>Kubernetes deployment manifest.</td></tr>
+          </tbody>
+        </table>
+        <p>For plain-Docker hosts, the repo's <code>docker-compose</code> setup (used by <code>fort start</code>) brings up the database and NATS; run the gateway container alongside them with the env contract above.</p>
+
+        <h2>Health &amp; first run</h2>
+        <div class="endpoint"><span class="method get">GET</span> /health <span>— <code>{"status":"ok","service":"fort"}</code>; unauthenticated, suitable for liveness/readiness probes and uptime checks</span></div>
+        <p>On a fresh production deployment there is no dev seed. Bootstrap the first admin through the self-gating setup endpoints, then sign in normally:</p>
+        <pre><code>curl https://fort.example.com/v1/setup/state
+<span class="c"># {"is_first_run":true}</span>
+
+curl -X <span class="k">POST</span> https://fort.example.com/v1/setup/admin \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"admin@yourco.com","password":"…12+ chars, upper/lower/digit/symbol…"}'</span>
+<span class="c"># {"created":true,"user_id":"…"} — 403 setup_already_complete from then on</span></code></pre>
+
+        <h2>Production checklist</h2>
+        <div class="callout warn">
+          <strong>Generate a strong <code>FORT_JWT_SECRET</code> and treat it as radioactive.</strong> Anyone holding it can mint valid sessions. Keep it in a secret manager, never in images or repos — and remember the whole point of the <a href="authentication.html">HTTP verify seam</a> is that no other service needs it.
+        </div>
+        <div class="callout warn">
+          <strong>Set <code>APP_ENV=production</code>.</strong> This disables the dev admin seed and the one-click dev-login endpoint. Verify neither is reachable before going live.
+        </div>
+        <div class="callout">
+          <strong>Set the feature-gate vars before users need them.</strong> 2FA enrollment fails without <code>TOTP_ENCRYPTION_KEY</code>; OTP and forgot-password fail without <code>AUTH_EMAIL_DRIVER</code>. Configure both at deploy time, not after the first support ticket.
+        </div>
+        <div class="callout">
+          <strong>Lock down the edges.</strong> <code>FORT_CORS_ORIGINS</code> = exactly your app origins. <code>fort_db</code> reachable only by Fort. Rate-limit <code>/v1/token/verify</code> at your proxy layer. Rotate <a href="multi-tenancy.html">platform tokens</a> when staff or vendors change.
+        </div>
+        <div class="callout">
+          <strong>Wire your probes and events.</strong> Point uptime monitoring at <code>GET /health</code>, and have consuming products subscribe to <a href="events.html"><code>fort.session.revoked</code></a> so revocations propagate immediately.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

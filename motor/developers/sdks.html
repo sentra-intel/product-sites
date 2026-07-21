@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDKs — Motor</title>
+  <meta name="description" content="Motor's real SDKs: motor-obs (Go + TypeScript) for logs, errors and heartbeats; the motor-feedback browser widget; and motor-admin embeddable panels.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html" class="active">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>SDKs</h1>
+        <p class="lead">Three SDKs ship today, each in its own repository under the <code>sentra-intel</code> GitHub org so they version independently of the Motor server. And remember the zeroth SDK: <strong>any existing Sentry SDK</strong> already works against Motor's <a href="ingest.html">compatible ingest</a> with a DSN swap.</p>
+
+        <table class="docs">
+          <thead><tr><th>SDK</th><th>Packages</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td>motor-obs</td><td><code>motorobs</code> (Go) · <code>@sentra/motor-obs</code> (TS)</td><td>Ship logs, errors, and monitor heartbeats from your own code</td></tr>
+            <tr><td>motor-feedback</td><td><code>@sentra/motor-feedback</code> + served bundle <code>motor-feedback.js</code></td><td>Drop-in browser widget for human bug reports → <code>/api/issues/v1</code></td></tr>
+            <tr><td>motor-admin</td><td><code>@sentra/motor-admin</code></td><td>Embed Motor's logs/errors/feedback panels in your product's admin</td></tr>
+          </tbody>
+        </table>
+
+        <h2>motor-obs — instrument any product</h2>
+        <p>motor-obs is the first-party instrumentation SDK, for code where you want direct control rather than a full Sentry SDK. It ships <strong>logs, errors, and monitor heartbeats</strong> to Motor's ingest endpoints, in Go (<code>motorobs</code>) and TypeScript (<code>@sentra/motor-obs</code>). Repo: <code>github.com/sentra-intel/motor-obs-sdk</code>.</p>
+        <pre><code><span class="c"># Go</span>
+go get github.com/sentra-intel/motor-obs-sdk
+
+<span class="c"># TypeScript / Node</span>
+npm install @sentra/motor-obs</code></pre>
+        <p>Both clients are configured with your Motor ingest URL, project id, and DSN public key, and speak the same wire protocol documented on the <a href="ingest.html">ingest page</a>:</p>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/store/ · /envelope/ <span>— errors, grouped into issues by fingerprint</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/logs/ <span>— structured log records (level, message, attributes, service)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/monitors/{name}/checkin <span>— cron/heartbeat check-ins (ok | error | in_progress)</span></div>
+        <div class="callout">
+          <strong>Full API surface:</strong> constructor options, batching behavior, and per-language idioms are documented in the <code>motor-obs-sdk</code> repository README — see repository docs. Anything the SDK sends can also be sent with plain HTTP, so the SDK is a convenience, never a requirement.
+        </div>
+
+        <h2>motor-feedback — the in-page report widget</h2>
+        <p>A drop-in browser widget that lets users file bugs, change requests, and questions from inside your app — pinned to the element and route they were looking at, with screenshots and attachments. Reports land on Motor's <code>/api/issues/v1</code> surface and appear on the operator's feedback board (and via <code>motor_list_feedback</code> over MCP). Repo: <code>github.com/sentra-intel/motor-feedback-sdk</code>.</p>
+        <p>Use the npm package (<code>@sentra/motor-feedback</code>) in bundled apps, or the prebuilt browser bundle that Motor's web app serves as <code>motor-feedback.js</code>:</p>
+        <pre><code>&lt;script src=<span class="s">"https://motor.example.com/motor-feedback.js"</span>&gt;&lt;/script&gt;
+&lt;button id=<span class="s">"report-bug"</span>&gt;Report a bug&lt;/button&gt;
+
+&lt;script&gt;
+  <span class="c">// the bundle exposes a MotorFeedback global</span>
+  MotorFeedback.<span class="k">mountReporter</span>({
+    trigger: <span class="s">"#report-bug"</span>,                 <span class="c">// element or selector that opens the reporter</span>
+    apiBase: <span class="s">"https://motor.example.com/api/issues/v1"</span>,
+    publishableKey: <span class="s">"&lt;publishableKey&gt;"</span>,     <span class="c">// the project's public feedback key</span>
+    defaultType: <span class="s">"bug"</span>,                      <span class="c">// bug | change | question | discussion</span>
+    theme: <span class="s">"auto"</span>,                           <span class="c">// or "light" / "dark"; accentColor: "#14B8A6"</span>
+  });
+&lt;/script&gt;</code></pre>
+        <ul>
+          <li><strong>Reporter sessions</strong> — the widget identifies reporters by email and holds a signed, stateless session token (<code>motor_rps_…</code>), so "my issues" is scoped server-side.</li>
+          <li><strong>Anchored reports</strong> — issues carry the route and an element anchor, so operators see <em>where</em> the report was filed.</li>
+          <li><strong>Attachments</strong> — screenshots and files upload via <code>/api/issues/v1/uploads</code> (max 5&nbsp;MB each).</li>
+          <li><strong>More entry points</strong> — the bundle also exports <code>mountFeedbackHub</code>, <code>mountNavigator</code>, and <code>openIssueView</code> for building a fuller in-app issues experience — see repository docs.</li>
+        </ul>
+
+        <h2>motor-admin — Motor panels in your admin</h2>
+        <p>motor-admin embeds Motor's <strong>logs, errors, and feedback panels</strong> directly into another product's admin area — a backend client plus prebuilt React panels (<code>@sentra/motor-admin</code>), so your support team triages reports without leaving your product. Repo: <code>github.com/sentra-intel/motor-admin-sdk</code>.</p>
+        <pre><code>npm install @sentra/motor-admin</code></pre>
+        <div class="callout">
+          <strong>Panel props and the backend-client setup</strong> are documented in the <code>motor-admin-sdk</code> repository — see repository docs. The panels read from the same <a href="api.html">REST endpoints</a> documented here, proxied through your backend so operator credentials never reach the browser.
+        </div>
+
+        <h2>Which integration path fits?</h2>
+        <table class="docs">
+          <thead><tr><th>You want</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td>Error tracking in a service that already runs a Sentry SDK</td><td>Keep the SDK, swap the DSN — <a href="ingest.html">ingest page</a></td></tr>
+            <tr><td>Logs / errors / heartbeats from your own Go or TS code</td><td>motor-obs</td></tr>
+            <tr><td>Human bug reports from inside a web app</td><td>motor-feedback widget</td></tr>
+            <tr><td>Motor's triage panels inside your own admin UI</td><td>motor-admin</td></tr>
+            <tr><td>Automation, dashboards, or AI agents</td><td><a href="api.html">REST API</a> or <a href="mcp.html">MCP</a> directly</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>Credential hygiene.</strong> The feedback publishable key and DSN keys are the only Motor credentials meant for browsers. Fort JWTs and <code>FORT_PLATFORM_TOKEN</code> stay server-side — motor-admin's backend client exists precisely so panels never hold them client-side.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

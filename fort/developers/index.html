@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Portal — Fort</title>
+  <meta name="description" content="Build on Fort: delegate login and token verification to a self-hosted auth gateway, embed auth UI with the SDKs, and react to auth events over NATS.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html" class="active">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Fort Developer Portal</h1>
+        <p class="lead">Fort is a self-hosted authentication and identity gateway — a single Go binary that issues Supabase-compatible JWTs and verifies them for every product you run. Your services never re-implement login, and they never hold the signing secret. It is the auth authority behind an intelligence platform deployed for a national government client.</p>
+
+        <h2>What the API gives you</h2>
+        <p>Point your apps at Fort once — logins go in, verified identity comes out:</p>
+        <div class="io">
+          <div class="io-box">
+            <h5>Your applications</h5>
+            <ul>
+              <li><span class="m">POST</span>Login, OTP &amp; TOTP 2FA flows — your UI or Fort's widgets</li>
+              <li><span class="m">SDK</span>Drop-in <code>&lt;FortAuthWidget&gt;</code> login screens</li>
+              <li><span class="m">HTTP</span>Bearer tokens on every request to your own APIs</li>
+            </ul>
+          </div>
+          <div class="io-arrow"></div>
+          <div class="io-box mid">
+            <h5>Fort issues &amp; verifies</h5>
+            <ul>
+              <li>argon2id passwords, OTP, TOTP 2FA, lockout, full audit trail</li>
+              <li>HS256 access tokens (15 min) + rotating refresh tokens</li>
+              <li>Per-platform roles resolved from RBAC at mint time</li>
+            </ul>
+          </div>
+          <div class="io-arrow a2"></div>
+          <div class="io-box">
+            <h5>Back to your stack</h5>
+            <ul>
+              <li><span class="m">POST</span>/v1/token/verify → <code>{valid, claims}</code> — no shared secret</li>
+              <li><span class="m">GET</span>/v1/branding — white-label config per platform</li>
+              <li><span class="m">NATS</span><code>fort.*</code> events the moment auth state changes</li>
+            </ul>
+          </div>
+        </div>
+
+        <h2>What you can build</h2>
+        <div class="grid grid-2" style="margin-block:18px">
+          <div class="tile"><span class="glyph">🔑</span><div><h4>Delegate auth from any service</h4><p>Stop re-implementing login per product. Every service calls <a href="authentication.html"><code>POST /v1/token/verify</code></a> (or wraps its routes in the Go <code>fort.Middleware</code>) and trusts the returned claims — the JWT secret never leaves Fort.</p></div></div>
+          <div class="tile"><span class="glyph">🧩</span><div><h4>Embed auth UI via SDK widgets</h4><p>Ship login, OTP, 2FA, lock-screen and profile pages without building them: <a href="sdks.html"><code>&lt;FortProvider&gt;</code> + <code>&lt;FortAuthWidget&gt;</code></a> drive the full flow against Fort's REST API from any Next.js app.</p></div></div>
+          <div class="tile"><span class="glyph">🏷️</span><div><h4>White-label multi-tenant products</h4><p>One Fort deployment serves many consuming apps ("platforms"), each with its own <a href="multi-tenancy.html">branding, settings, allowed users and API tokens</a> — isolated by a mandatory <code>platform_id</code> predicate on every query.</p></div></div>
+          <div class="tile"><span class="glyph">📡</span><div><h4>React to auth events over NATS</h4><p>Subscribe to <a href="events.html"><code>fort.user.created</code>, <code>fort.session.revoked</code></a> and friends to provision users, tear down sessions, or refresh cached branding the moment it changes — no polling.</p></div></div>
+        </div>
+
+        <h2>One binary, one seam</h2>
+        <p>Fort ships as a single Go binary (<code>fort</code>) with its own PostgreSQL database and its own NATS stream. The gateway core is deliberately small:</p>
+        <div class="endpoint"><span class="method post">POST</span> /v1/token/verify <span>— validate any Fort bearer token; returns decoded claims (<a href="authentication.html">Tokens &amp; verification</a>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/branding <span>— pre-login product branding, per platform (<a href="multi-tenancy.html">Platforms</a>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /.well-known/jwks.json <span>— key metadata (algorithm + key id; HS256 exposes no key material)</span></div>
+        <div class="callout">
+          <strong>Base URLs.</strong> Local development: <code>http://localhost:8213</code> · Production: your own deployment host (Fort is self-hosted) — examples on these pages use <code>https://fort.example.com</code>. Browser sessions ride on httpOnly cookies; service-to-service calls use <code>Authorization: Bearer</code> — see <a href="authentication.html">Tokens &amp; verification</a>.
+        </div>
+        <div class="callout">
+          <strong>Real SDKs, available now.</strong> Fort ships five packages: <code>@sentra/fort-auth-sdk</code> (TypeScript + Go), <code>@sentra/fort-admin-sdk</code> (TypeScript + Go), <code>@sentra/fort-billing-sdk</code> (TypeScript + Go), <code>@sentra/fort-storage-sdk</code> (TypeScript), and the <code>@sentra/fort-sdk</code> umbrella that re-exports all four. Details on the <a href="sdks.html">SDKs page</a>.
+        </div>
+
+        <h2>5-minute quickstart</h2>
+        <h3>1. Run Fort</h3>
+        <p>From a clone of the repository, with Docker and Go installed:</p>
+        <pre><code><span class="c"># Full local stack: docker compose up -d (fort_db :5445 + NATS :4245)</span>
+<span class="c"># + Atlas migrations + the gateway on :8213</span>
+make start
+
+<span class="c"># — or step by step —</span>
+make build            <span class="c"># → ./bin/fort</span>
+./bin/fort <span class="k">migrate</span>    <span class="c"># apply Atlas migrations</span>
+./bin/fort <span class="k">seed</span>       <span class="c"># seed admin user + platform rows + fixtures</span>
+./bin/fort <span class="k">serve</span>      <span class="c"># gateway on FORT_HTTP_ADDR (default :8213)</span></code></pre>
+        <p>Confirm it is up — no auth required:</p>
+        <pre><code>curl http://localhost:8213/health
+<span class="c"># {"status":"ok","service":"fort"}</span></code></pre>
+
+        <h3>2. Sign in</h3>
+        <p>In non-production (<code>APP_ENV != production</code>) the seed creates a dev admin, <code>admin@sentra.local</code>. Login sets three httpOnly cookies (<code>access_token</code>, <code>refresh_token</code>, <code>csrf_token</code>):</p>
+        <pre><code>curl -c cookies.txt -X <span class="k">POST</span> http://localhost:8213/v1/auth/login \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"admin@sentra.local","password":"••••••••"}'</span>
+<span class="c"># {"status":"ok"}                             — session cookies set</span>
+<span class="c"># — or, when a second factor is required —</span>
+<span class="c"># {"status":"challenge","challenge":"2fa","challenge_token":"eyJ..."}</span></code></pre>
+
+        <h3>3. Verify a token — the gateway core</h3>
+        <p>This is the call every one of your services makes. Fort checks the signature and expiry and returns the decoded claims — your service never holds the secret:</p>
+        <pre><code>curl -X <span class="k">POST</span> http://localhost:8213/v1/token/verify \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'</span>
+<span class="c"># Always 200:</span>
+{
+  <span class="s">"valid"</span>: true,
+  <span class="s">"claims"</span>: {
+    <span class="s">"sub"</span>: <span class="s">"550e8400-e29b-41d4-a716-446655440000"</span>,
+    <span class="s">"role"</span>: <span class="s">"admin"</span>,
+    <span class="s">"roles"</span>: [<span class="s">"admin"</span>],
+    <span class="s">"platform"</span>: <span class="s">"default"</span>,
+    <span class="s">"email"</span>: <span class="s">"admin@sentra.local"</span>,
+    <span class="s">"iat"</span>: 1749081600,
+    <span class="s">"exp"</span>: 1749082500
+  }
+}
+<span class="c"># invalid tokens come back as {"valid":false,"error":"token_expired"}</span></code></pre>
+        <p>From Go, the same integration is three lines with the <a href="sdks.html">SDK</a>: <code>fort.Middleware(cfg)(fort.RequireRole("admin")(handler))</code>.</p>
+
+        <h2>Best practices</h2>
+        <div class="callout">
+          <strong>Verify over HTTP, not with a shared secret.</strong> <code>POST /v1/token/verify</code> keeps <code>FORT_JWT_SECRET</code> inside Fort. Local HS256 verification exists in the SDKs, but reserve it for deployments where the secret is already shared at deploy time.
+        </div>
+        <div class="callout warn">
+          <strong>Reject tokens whose <code>purpose</code> is non-empty.</strong> Challenge and action tokens (<code>otp</code>, <code>2fa</code>, <code>reset-password</code>, <code>lock</code>) are signed with the same key but are <em>not</em> sessions. Session-level authorization requires <code>purpose == ""</code> and <code>exp &gt; now()</code>.
+        </div>
+        <div class="callout">
+          <strong>Browsers use cookies + CSRF; services use Bearer.</strong> Cookie-authenticated mutations must echo the <code>csrf_token</code> cookie in an <code>X-CSRF-Token</code> header. Bearer-token callers are exempt.
+        </div>
+        <div class="callout">
+          <strong>Access tokens live 15 minutes — refresh proactively.</strong> Call <code>POST /v1/auth/refresh</code> to rotate the token pair instead of retrying failed requests.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="authentication.html">Tokens &amp; verification</a> — the token model, claims, and both verification paths.</li>
+          <li><a href="api.html">REST API reference</a> — every endpoint, grouped by tag.</li>
+          <li><a href="sdks.html">SDKs</a> — the five packages, with TypeScript and Go examples.</li>
+          <li><a href="events.html">Events &amp; NATS</a> — subjects, payloads, and a consumer example.</li>
+          <li><a href="multi-tenancy.html">Platforms &amp; white-label</a> — one deployment, many branded apps.</li>
+          <li><a href="deployment.html">Self-hosting</a> — ports, env contract, Docker and Kubernetes.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-hosting &amp; integrations — Motor</title>
+  <meta name="description" content="Run Motor yourself: the single binary and its subcommands, ports, the full environment variable reference per integration, graceful degradation, migrations, and a production checklist.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html" class="active">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Self-hosting &amp; integrations</h1>
+        <p class="lead">Motor is self-hosted and standalone: one Go binary, its own Postgres, its own NATS, and a Next.js dashboard. Start with zero integrations configured and light surfaces up one env var at a time — every unconfigured integration degrades gracefully instead of failing.</p>
+
+        <h2>The binary</h2>
+        <p>Everything ships in a single Cobra binary:</p>
+        <table class="docs">
+          <thead><tr><th>Subcommand</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor serve</td><td>Run the HTTP service on <code>:8215</code> — REST API, ingest, and MCP in one process</td></tr>
+            <tr><td>motor start</td><td>Bring up db + nats via docker compose, then serve</td></tr>
+            <tr><td>motor migrate</td><td>Apply Atlas migrations (idempotent)</td></tr>
+            <tr><td>motor reset</td><td>Drop and re-apply the schema (development)</td></tr>
+            <tr><td>motor seed</td><td>Seed plugins + fixtures</td></tr>
+            <tr><td>motor plugin</td><td>Manage the DB-driven dashboard plugins: <code>list</code> / <code>enable</code> / <code>disable</code> / <code>generate</code> / <code>agent</code></td></tr>
+          </tbody>
+        </table>
+        <pre><code><span class="c"># build and run</span>
+make build          <span class="c"># → bin/motor</span>
+make start          <span class="c"># docker compose up -d (db + nats), then go run . serve</span>
+
+<span class="c"># database lifecycle — sqlc for queries, Atlas for migrations</span>
+make migrate        <span class="c"># apply db/migrations</span>
+make sqlc           <span class="c"># regenerate the type-safe query layer</span>
+make atlas          <span class="c"># diff a new migration from schema.sql</span></code></pre>
+
+        <h2>Ports</h2>
+        <table class="docs">
+          <thead><tr><th>Port</th><th>Service</th></tr></thead>
+          <tbody>
+            <tr><td>:8215</td><td>Go HTTP API (<code>API_PORT</code>, or <code>MOTOR_HTTP_ADDR</code> to override host:port)</td></tr>
+            <tr><td>:5447</td><td>Postgres — ParadeDB pg17 via docker compose (<code>motor-db</code>)</td></tr>
+            <tr><td>:4247</td><td>NATS with JetStream via docker compose (<code>motor-nats</code>)</td></tr>
+            <tr><td>:3215</td><td>Next.js web dashboard (<code>make web</code>)</td></tr>
+          </tbody>
+        </table>
+        <p>The compose file starts only the data layer — <code>motor-db</code> (ParadeDB pg17) and <code>motor-nats</code> (JetStream enabled). The Go API and the web app run as processes in front of them.</p>
+
+        <h2>Health probe</h2>
+        <div class="endpoint"><span class="method get">GET</span> /healthz <span>— liveness, no auth</span></div>
+        <pre><code>curl https://motor.example.com/healthz
+<span class="c"># {"status":"ok","service":"motor","version":"0.1.0","uptime":"2m30s"}</span></code></pre>
+        <p>Point your load balancer, uptime checks, or Kubernetes probes here. (And once Motor is up, let it monitor everything else's heartbeats via the <a href="ingest.html">check-in endpoint</a>.)</p>
+
+        <h2>Environment reference</h2>
+        <p>From <code>.env.example</code> in the repository (<code>cp .env.example .env</code> — the file is gitignored). Grouped by what each block unlocks:</p>
+
+        <h3>Core</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>DATABASE_URL / MOTOR_DATABASE_URL / MOTOR_DB_URL</td><td>Postgres connection string (Atlas + sqlc + the server accept any of the three)</td></tr>
+            <tr><td>API_PORT</td><td>HTTP port (default 8215); <code>MOTOR_HTTP_ADDR</code> overrides with a full host:port</td></tr>
+            <tr><td>MOTOR_LOG_LEVEL</td><td>Log level (e.g. <code>info</code>)</td></tr>
+            <tr><td>WEB_ORIGIN / MOTOR_CORS_ORIGINS</td><td>The dashboard origin(s) allowed by CORS</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Fort (auth — primary)</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>FORT_URL</td><td>Fort base URL (a trailing <code>/v1</code> is stripped automatically)</td></tr>
+            <tr><td>FORT_PLATFORM</td><td>Platform slug Motor identifies as (<code>motor</code>)</td></tr>
+            <tr><td>FORT_JWT_SECRET</td><td>Shared HS256 secret → local JWT verification, no HTTP round-trip</td></tr>
+            <tr><td>FORT_PLATFORM_TOKEN</td><td>Minted via Fort admin; unlocks the billing proxy surfaces</td></tr>
+          </tbody>
+        </table>
+        <p>If neither <code>FORT_URL</code> nor <code>FORT_JWT_SECRET</code> is set, Motor degrades to Coder-only auth rather than failing to boot.</p>
+
+        <h3>Cortex (AI for <code>plugin agent</code>)</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>CORTEX_HTTP_ADDR / CORTEX_TOKEN</td><td>The AI gateway used by the agentic plugin builder (<code>motor plugin agent</code>)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>NATS</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>NATS_URL</td><td>JetStream control client connection (supports <code>wss://</code> for a public gateway)</td></tr>
+            <tr><td>NATS_MONITOR_URLS</td><td>HTTP monitor endpoints polled for /varz, /jsz, /connz</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Infra integrations (each unlocks one surface)</h3>
+        <table class="docs">
+          <thead><tr><th>Variable(s)</th><th>Unlocks</th></tr></thead>
+          <tbody>
+            <tr><td>CF_API_TOKEN, CF_ZONE_ID</td><td>Cloudflare DNS + cache purge</td></tr>
+            <tr><td>NPM_HOME_URL, NPM_HOME_USER, NPM_HOME_PASSWORD</td><td>Nginx Proxy Manager hosts</td></tr>
+            <tr><td>PVE_URL, PVE_USER, PVE_PASSWORD</td><td>Proxmox cluster resources</td></tr>
+            <tr><td>DOCKER_HOSTS</td><td>Docker containers across hosts (comma-separated DOCKER_HOST endpoints)</td></tr>
+            <tr><td>CODER_URL, CODER_SESSION_TOKEN (fallback: CODER_USER_TOKEN)</td><td>Coder workspaces, team, and the Coder sign-in option</td></tr>
+            <tr><td>SUPABASE_API_URL, SUPABASE_SERVICE_ROLE_KEY</td><td>Supabase pg-meta introspection</td></tr>
+            <tr><td><em>GitHub — no variable, by design</em></td><td>Repos, runs, dispatch run as the operator's <code>gh auth token</code> session</td></tr>
+            <tr><td><em>GCP — no variable, by design</em></td><td>Projects list runs as the operator's <code>gcloud auth print-access-token</code> session</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>Never add GH_TOKEN or GCP_* to the environment.</strong> The absence is the security model: GitHub and GCP calls shell out to the operator's live CLI session per request, so there is no long-lived cloud credential to leak, rotate, or audit. Don't "fix" it with a stored token.
+        </div>
+
+        <h3>Observability ingest &amp; feedback</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>MOTOR_INGEST_URL</td><td>The <strong>public</strong> base URL products send errors/logs/feedback to — drives the DSNs and connection snippets on the Integrations page. Must be externally reachable (not an internal Docker host)</td></tr>
+            <tr><td>MOTOR_DSN</td><td>Motor's own DSN, for self-instrumentation</td></tr>
+            <tr><td>MOTOR_FEEDBACK_SECRET</td><td>Optional HMAC secret for the Feedback SDK surface</td></tr>
+            <tr><td>MOTOR_UPLOAD_DIR</td><td>Attachment/upload storage directory (dev-local storage; use object storage in production)</td></tr>
+          </tbody>
+        </table>
+        <p>The web dashboard keeps its own <code>web/.env.local</code> (Coder + session secrets) — separate from the Go service's <code>.env</code>. Neither file is committed.</p>
+
+        <h2>Graceful degradation</h2>
+        <p>Motor is built to boot with an empty integration block. Any surface whose credentials are missing:</p>
+        <ul>
+          <li>returns <code>503</code> from its API endpoint, with the error naming the exact env var to set;</li>
+          <li>renders as a "not configured" card in the dashboard — never a 404, never a crash;</li>
+          <li>comes alive as soon as the variable is set, with no schema or code change.</li>
+        </ul>
+        <p>That makes the onboarding path incremental by design: deploy, then unlock Cloudflare today, Proxmox next week, billing whenever Fort's platform token is minted.</p>
+
+        <h2>Database: sqlc + Atlas</h2>
+        <ul>
+          <li><strong>Schema &amp; migrations</strong> — the schema lives in <code>db/schema.sql</code>; Atlas diffs it into versioned migrations (<code>make atlas</code>), and <code>motor migrate</code> applies them idempotently.</li>
+          <li><strong>Queries</strong> — all SQL is generated through sqlc (<code>make sqlc</code>); there is no raw string SQL in the server.</li>
+          <li><strong>ParadeDB pg17</strong> — the compose database image; a stock Postgres 17 with search/analytics extensions available.</li>
+        </ul>
+
+        <h2>Production checklist</h2>
+        <ul>
+          <li><strong>TLS in front</strong> — terminate HTTPS at your reverse proxy; ingest DSNs and Fort JWTs should never travel plaintext.</li>
+          <li><strong>Set Fort auth up properly</strong> — <code>FORT_URL</code> (+ <code>FORT_JWT_SECRET</code> for local verification) and a minted <code>FORT_PLATFORM_TOKEN</code> if you need billing surfaces. Confirm an admin-role account exists before relying on <code>/mcp/admin</code>.</li>
+          <li><strong>Lock CORS down</strong> — <code>MOTOR_CORS_ORIGINS</code> should list your dashboard origin(s) only.</li>
+          <li><strong>Make <code>MOTOR_INGEST_URL</code> the real public host</strong> — every DSN you hand out embeds it.</li>
+          <li><strong>Set <code>MOTOR_FEEDBACK_SECRET</code></strong> if you deploy the feedback widget publicly, and move <code>MOTOR_UPLOAD_DIR</code> to durable storage.</li>
+          <li><strong>Wire the probe</strong> — point liveness checks at <code>/healthz</code>.</li>
+          <li><strong>Run migrations on deploy</strong> — <code>motor migrate</code> before <code>motor serve</code>; it is idempotent.</li>
+          <li><strong>Keep the CLI-delegation rule</strong> — the deploy host's <code>gh</code> / <code>gcloud</code> / <code>coder</code> sessions define what infra actions Motor can take. No <code>GH_TOKEN</code>, no <code>GCP_*</code>, ever.</li>
+          <li><strong>Back up the database</strong> — Motor owns its data: issues, events, logs, monitors, feedback, and the plugin registry all live in its Postgres.</li>
+        </ul>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="authentication.html">Auth &amp; roles</a> — how the Fort and Coder settings above are used at request time.</li>
+          <li><a href="ingest.html">Sentry-compatible ingest</a> — handing out DSNs once <code>MOTOR_INGEST_URL</code> is set.</li>
+          <li><a href="api.html">REST API</a> — verify each surface as you unlock it.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Events &amp; NATS — Fort</title>
+  <meta name="description" content="React to Fort auth events over NATS: fort.user.created, fort.session.revoked, fort.branding.updated and fort.platform.member.added — subjects, payloads, and a consumer example.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html" class="active">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Events &amp; NATS</h1>
+        <p class="lead">Fort runs its own NATS server and publishes auth lifecycle events on <code>fort.*</code> subjects. Consuming products subscribe to react the moment auth state changes — provision users, tear down cached sessions, refresh branding — instead of polling the REST API.</p>
+
+        <h2>Why events, not another database</h2>
+        <p>Fort's product boundary is strict: other products never read <code>fort_db</code>. Everything crosses one of two public seams — token verification over HTTP, and auth events over NATS. That keeps every consumer decoupled: you can rebuild your user cache from events without ever coupling to Fort's schema.</p>
+
+        <h2>Subjects</h2>
+        <p>Payloads are plain JSON, verified against the publisher in Fort's <code>internal/natsseam</code> package:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Subject</th><th>Published when</th><th>Payload</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>fort.user.created</td>
+              <td>A new user is seeded or provisioned</td>
+              <td><code>{"user_id":"&lt;uuid&gt;","email":"&lt;email&gt;"}</code></td>
+            </tr>
+            <tr>
+              <td>fort.session.revoked</td>
+              <td>All refresh tokens for a user are revoked (password reset, admin revoke, logout-everywhere)</td>
+              <td><code>{"user_id":"&lt;uuid&gt;","revoked_count":N,"reason":"&lt;reason&gt;"}</code></td>
+            </tr>
+            <tr>
+              <td>fort.branding.updated</td>
+              <td>An admin patches branding (<code>PATCH /v1/admin/branding</code>)</td>
+              <td><code>{"updated_by":"&lt;uuid&gt;"}</code></td>
+            </tr>
+            <tr>
+              <td>fort.platform.member.added</td>
+              <td>A user is added to a platform's member list</td>
+              <td><code>{"user_id":"&lt;uuid&gt;","email":"&lt;email&gt;","platform_id":"&lt;uuid&gt;","role":"&lt;role&gt;"}</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Subscribing from a consuming product</h2>
+        <p>Point a NATS client at Fort's NATS URL (<code>FORT_NATS_URL</code> — <code>nats://localhost:4245</code> in local dev) and subscribe to the subjects you care about:</p>
+        <pre><code><span class="c">// Go — react to session revocations and new platform members</span>
+nc, err := nats.<span class="k">Connect</span>(os.Getenv(<span class="s">"FORT_NATS_URL"</span>))
+<span class="k">if</span> err != nil { log.Fatal(err) }
+
+nc.<span class="k">Subscribe</span>(<span class="s">"fort.session.revoked"</span>, <span class="k">func</span>(m *nats.Msg) {
+    <span class="k">var</span> ev <span class="k">struct</span> {
+        UserID       string <span class="s">`json:"user_id"`</span>
+        RevokedCount int64  <span class="s">`json:"revoked_count"`</span>
+        Reason       string <span class="s">`json:"reason"`</span>
+    }
+    <span class="k">if</span> json.Unmarshal(m.Data, &amp;ev) == nil {
+        dropCachedSessions(ev.UserID)   <span class="c">// your side: evict, disconnect, audit</span>
+    }
+})
+
+nc.<span class="k">Subscribe</span>(<span class="s">"fort.platform.member.added"</span>, <span class="k">func</span>(m *nats.Msg) {
+    <span class="c">// eagerly provision the user in your product so they're visible</span>
+    <span class="c">// before their first sign-in</span>
+})</code></pre>
+        <div class="callout">
+          <strong>A real pattern:</strong> subscribing to <code>fort.platform.member.added</code> lets a product create its own user record the moment an admin grants access in Fort — the user's workspace exists before they ever log in.
+        </div>
+
+        <h2>Events vs. polling</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>Need</th><th>Use</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Know a session was revoked (kill live connections, evict caches)</td><td>Subscribe to <code>fort.session.revoked</code></td></tr>
+            <tr><td>Provision users into your product as they're added</td><td>Subscribe to <code>fort.user.created</code> / <code>fort.platform.member.added</code></td></tr>
+            <tr><td>Refresh cached branding when an admin re-themes</td><td>Subscribe to <code>fort.branding.updated</code>, then re-fetch <code>GET /v1/branding</code></td></tr>
+            <tr><td>Authorize an individual request right now</td><td><a href="authentication.html"><code>POST /v1/token/verify</code></a> — always the API, never events</td></tr>
+            <tr><td>Reconcile full state (startup, recovery, audits)</td><td>The <a href="api.html">REST API</a> — events are a signal, not a system of record</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Delivery semantics</h2>
+        <div class="callout warn">
+          <strong>Events are best-effort, fire-and-forget.</strong> Fort publishes with plain NATS publish calls — non-blocking, and silently skipped if NATS is unavailable — so the auth flow never stalls on the event stream. Treat events as a fast-path optimization: keep a reconcile path against the REST API for anything correctness-critical, and never rely on an event you might not receive to enforce security. (Token verification, not revocation events, is the authoritative check.)
+        </div>
+        <div class="callout">
+          <strong>Inbound webhooks:</strong> Fort's event seam is NATS-native — there is no signed-HTTP webhook delivery today. If your consumer can't speak NATS, run a small bridge process that subscribes and forwards to your own HTTP endpoint. The repository also contains a webhook dispatcher module (<code>internal/auth/webhook_dispatcher.go</code>); see the repository docs for its current status before building on it.
+        </div>
+
+        <h2>Local development</h2>
+        <pre><code><span class="c"># make start brings NATS up alongside fort_db (JetStream-enabled, :4245)</span>
+make start
+
+<span class="c"># tail Fort events with the NATS CLI</span>
+nats sub <span class="s">'fort.&gt;'</span> --server nats://localhost:4245</code></pre>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capability Plugin SDK — Sentra</title>
+  <meta name="description" content="Extend Sentra with Go capability plugins: the CapabilityPlugin contract, the sentra-hub scaffolder, runtime feature flags and prompt templates, and the bilingual output requirement.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html" class="active">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Capability plugin SDK (Go)</h1>
+        <p class="lead">A <strong>capability</strong> is a Go service that receives batches of enriched envelopes and produces intelligence artifacts — alerts, narratives, entities, briefings, and anything you design. New intelligence functions are added as capability plugins, scaffolded from one CLI command, without re-architecting the platform.</p>
+
+        <h2>The contract</h2>
+        <p>Every capability is a Go package implementing two interfaces, both satisfied by the same <code>*Service</code> struct:</p>
+        <pre><code><span class="c">// plugin.CapabilityPlugin — runtime contract (scheduling, dispatch)</span>
+<span class="k">type</span> CapabilityPlugin <span class="k">interface</span> {
+    Plugin
+    Capability() capability.Bitmask      <span class="c">// which bit this capability handles</span>
+    SubscribeTopic() <span class="k">string</span>              <span class="c">// "sentra.capability.&lt;id&gt;.input.sub"</span>
+    ProcessBatch(ctx, []EnrichedEnvelope) <span class="k">error</span>
+    ArtifactTables() []<span class="k">string</span>            <span class="c">// tables this capability writes to</span>
+}
+
+<span class="c">// capability.Capability — admin contract (feature flags, prompts)</span>
+<span class="k">type</span> Capability <span class="k">interface</span> {
+    ID() <span class="k">string</span>
+    Features() []capability.Feature
+    Prompts()  []capability.PromptSlot
+}</code></pre>
+        <p><code>ProcessBatch</code> is the heart of a capability: envelopes arrive, artifacts get written. Capabilities register themselves via Go <code>init()</code> in <code>internal/capabilities/&lt;slug&gt;/runner.go</code>, and the host loads them from the registry.</p>
+
+        <h3>Built-in capabilities (excerpt)</h3>
+        <table class="docs">
+          <thead><tr><th>Capability</th><th>Bitmask bit</th><th>Artifact tables</th></tr></thead>
+          <tbody>
+            <tr><td>entities</td><td>1&lt;&lt;0</td><td><code>entities</code>, <code>entity_network_edges</code></td></tr>
+            <tr><td>alerts</td><td>1&lt;&lt;2</td><td><code>alerts</code></td></tr>
+            <tr><td>events</td><td>1&lt;&lt;3</td><td><code>events</code></td></tr>
+            <tr><td>narratives</td><td>1&lt;&lt;4</td><td><code>narratives</code>, <code>narrative_analyses</code></td></tr>
+            <tr><td>breaking-news</td><td>1&lt;&lt;5</td><td><code>breaking_news_items</code></td></tr>
+            <tr><td>briefing</td><td>1&lt;&lt;7</td><td><code>briefings</code>, <code>briefing_sections</code></td></tr>
+            <tr><td>knowledge</td><td>1&lt;&lt;17</td><td><code>knowledge_items</code></td></tr>
+            <tr><td>intel-pipeline</td><td>(orchestrator)</td><td><code>intelligence_snapshots</code>, <code>pipeline_runs</code></td></tr>
+          </tbody>
+        </table>
+        <p>The <code>intel-pipeline</code> capability orchestrates the 4-stage pipeline (gather → detect → crosslink → synthesize) that consolidates the others' output into intelligence snapshots. The full catalog is in the repository's <code>docs/capabilities.md</code>.</p>
+
+        <h2>Feature flags and prompt templates</h2>
+        <p>Each capability declares a static catalog of <strong>Feature</strong> flags and <strong>PromptSlot</strong> templates. At boot, these are upserted into <code>capability_features</code> and <code>capability_prompts</code> — after which <strong>admins can toggle features and edit prompts at runtime</strong>, without a redeploy. The boot upsert refreshes metadata but never overwrites admin-edited values.</p>
+        <pre><code>capability.Feature{
+    ID:             <span class="s">"primary-flow"</span>,
+    Name:           <span class="s">"Daily Briefing Synthesis"</span>,
+    Description:    <span class="s">"Generates a daily bilingual executive briefing per scope..."</span>,
+    DefaultEnabled: <span class="k">true</span>,
+    Priority:       100,
+}
+
+capability.PromptSlot{
+    Slug:            <span class="s">"intel-synthesis-prompt"</span>,
+    DefaultTemplate: <span class="s">`You are a senior intelligence analyst...`</span>,
+    DefaultLanguage: <span class="s">"en"</span>,
+    Variables:       []<span class="k">string</span>{<span class="s">"scope"</span>, <span class="s">"narratives_json"</span>, <span class="s">"alerts_json"</span>},
+}</code></pre>
+        <p>Two PromptSlots with the same <code>Slug</code> and different <code>DefaultLanguage</code> values declare a bilingual pair. Prompt edits through the <a href="rest-api.html">Admin/Prompts API</a> are versioned — a new version row is inserted, never a mutation.</p>
+
+        <h2>Scaffolding a capability</h2>
+        <h3>Option A: <code>sentra-hub capability generate</code></h3>
+        <pre><code>sentra-hub <span class="k">capability generate</span> \
+  --slug my-cap \
+  --name-en <span class="s">"My Cap"</span> \
+  --name-ar <span class="s">"قدرتي"</span> \
+  --desc-en <span class="s">"Does X for operators"</span> \
+  --desc-ar <span class="s">"يقوم بـ X للمشغلين"</span> \
+  --icon sparkles \
+  --color <span class="s">'#7C3AED'</span></code></pre>
+        <p>Add <code>--dry-run</code> to preview every file without writing, or <code>--ai --why "…"</code> to draft the default prompt templates via the configured LLM. The scaffolder creates the Go service, features, and plugin files under <code>internal/capabilities/&lt;slug&gt;/</code>, the <code>runner.go</code> registration, a React section component for the dashboard, and the frontend route/icon/label registry entries.</p>
+
+        <h3>Option B: agentic scaffold</h3>
+        <pre><code>sentra-hub <span class="k">capability agent</span> <span class="s">"Analyse diplomatic positions from alerts, \
+  track per-country stances, link to related entities"</span></code></pre>
+        <p>This asks the configured LLM to design a <code>PluginSpec</code>, then drives an AI coding agent (if installed) to implement the full capability from the spec — otherwise it prints the spec and the equivalent <code>generate</code> command to run manually.</p>
+
+        <h2>Walkthrough: after scaffolding</h2>
+        <ol>
+          <li><strong>Implement <code>ProcessBatch</code></strong> in <code>internal/capabilities/&lt;slug&gt;/internal/plugin.go</code> — envelopes in, artifacts out. Use <code>pgxpool</code> with parameterised (<code>$1</code>) queries.</li>
+          <li><strong>Add the bitmask constant</strong> in <code>pkg/contracts/capability/capability.go</code> — append-only, never reuse bits:
+            <pre><code>MyCap Bitmask = 1 &lt;&lt; 18  <span class="c">// append only — never reuse bits</span></code></pre>
+            Update <code>All()</code> and the <code>TopicName()</code> switch in the same file.</li>
+          <li><strong>Wire the subscriber</strong> in the serve command — add an import + registration line at the marked <code>SENTRA-CAPABILITY-IMPORTS-START</code> block.</li>
+          <li><strong>Enable it in the superadmin panel</strong> at <code>/superadmin/capabilities/&lt;slug&gt;</code> — confirm the Feature flags upserted, then toggle the capability on for the relevant scopes.</li>
+          <li><strong>Write tests</strong> — a unit test for the core logic, a <code>ProcessBatch</code> happy path, and a bilingual parity test (below).</li>
+        </ol>
+        <p>Compile-time checklist:</p>
+        <pre><code><span class="k">var</span> _ plugin.CapabilityPlugin = (*Service)(<span class="k">nil</span>)  <span class="c">// compile-time assertion</span>
+
+<span class="k">func</span> (s *Service) ID() <span class="k">string</span>                      { <span class="k">return</span> <span class="s">"&lt;slug&gt;"</span> }
+<span class="k">func</span> (s *Service) Capability() capability.Bitmask  { <span class="k">return</span> capability.MyCap }
+<span class="k">func</span> (s *Service) SubscribeTopic() <span class="k">string</span>          { <span class="k">return</span> <span class="s">"sentra.capability.&lt;slug&gt;.input.sub"</span> }
+<span class="k">func</span> (s *Service) ArtifactTables() []<span class="k">string</span>        { <span class="k">return</span> []<span class="k">string</span>{<span class="s">"public.&lt;slug&gt;_items"</span>} }</code></pre>
+
+        <h2>Runtime dispatch</h2>
+        <p>Envelopes reach capabilities via the Postgres NOTIFY channel <code>envelope_ingested</code>: the host reads each envelope's capability bitmask and dispatches it to every matching subscriber. In local dev all subscribers run as goroutines inside the bridge process; in production each capability can run as its own Deployment. Capabilities may also define their own triggers — the briefing capability, for example, fires synthesis when a content cluster forms (≥3 envelopes from ≥2 distinct sources within a rolling 4-hour window), falls back to an envelope-count accumulator, and always runs once daily at 06:00 UTC.</p>
+
+        <h2>Bilingual output requirement</h2>
+        <div class="callout warn">
+          <strong>Every artifact must carry both languages.</strong> All user-facing text fields are EN/AR pairs (<code>title_en</code>/<code>title_ar</code>, …). When the source is Arabic-only, translate to fill the English field; when English-only, produce the Arabic via AI. This is enforced by a shared test pattern:
+        </div>
+        <pre><code><span class="k">func</span> TestBilingualOutput(t *testing.T) {
+    <span class="k">for</span> _, artifact := <span class="k">range</span> artifacts {
+        require.NotEmpty(t, artifact.TitleEN, <span class="s">"title_en must be set"</span>)
+        require.NotEmpty(t, artifact.TitleAR, <span class="s">"title_ar must be set"</span>)
+    }
+}</code></pre>
+
+        <h2>Best practices</h2>
+        <div class="callout">
+          <strong>Route AI calls through the inference gateway.</strong> All LLM calls go through the platform's AI gate (which targets the configured OpenAI-compatible endpoint or falls back to direct provider keys) — never call provider SDKs directly from a capability.
+        </div>
+        <div class="callout">
+          <strong>Design prompts for admin editing.</strong> Everything an operator might tune belongs in a <code>PromptSlot</code> or <code>Feature</code>, not a hardcoded constant — that's what makes runtime tuning without redeploys possible.
+        </div>
+        <div class="callout">
+          <strong>Declare your artifact tables.</strong> <code>ArtifactTables()</code> is how the platform knows what you write. Keep it accurate; it drives observability and admin tooling.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

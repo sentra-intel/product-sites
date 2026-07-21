@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authentication — Sentra</title>
+  <meta name="description" content="How authentication works in the Sentra API: JWT sign-in, Bearer tokens vs cookies, roles, and server-to-server service keys.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html" class="active">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Authentication</h1>
+        <p class="lead">Every authenticated Sentra endpoint accepts a JWT — either as a Bearer token in the <code>Authorization</code> header or as the <code>access_token</code> HTTP-only cookie set at sign-in. Admin endpoints additionally require an admin role, and server-to-server callers can use a service key.</p>
+
+        <h2>Sign-in flow</h2>
+        <p>Sign in with email + password. The endpoint is rate-limited to <strong>10 requests/minute per IP</strong> and, on success, sets <code>access_token</code> and <code>refresh_token</code> HTTP-only cookies:</p>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/sign-in</div>
+        <pre><code>curl -c cookies.txt -X <span class="k">POST</span> https://sentra.example.com/api/auth/sign-in \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"analyst@example.com","password":"••••••••"}'</span></code></pre>
+        <pre><code><span class="c">// 200 OK — session cookies set</span>
+{
+  <span class="s">"status"</span>: <span class="s">"authenticated"</span>,
+  <span class="s">"redirect_to"</span>: <span class="s">"/dashboard"</span>,
+  <span class="s">"expires_at"</span>: 1789000000   <span class="c">// Unix timestamp</span>
+}</code></pre>
+        <p>A wrong email or password returns <code>401</code>.</p>
+        <p>Other sign-in paths exist alongside password auth — magic link (<code>POST /api/auth/magic-link</code>), Google OAuth (<code>GET /api/auth/authorize/google</code> → <code>/api/auth/callback</code>), and password reset (<code>/api/auth/forgot-password</code>, <code>/api/auth/reset-password</code>). <code>GET /api/auth/login-methods?email=…</code> reports which methods (<code>password</code>, <code>magic_link</code>, <code>google</code>, <code>sso</code>) are available for an address. See the <a href="rest-api.html">REST reference</a> for the full Auth tag.</p>
+
+        <h2>Bearer header vs. cookie</h2>
+        <p>Both carry the same JWT — pick the one that fits your client:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Mechanism</th><th>Best for</th><th>How</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>access_token cookie</td>
+              <td>Browsers and browser-like clients</td>
+              <td>Set automatically by <code>POST /api/auth/sign-in</code>; HTTP-only, sent on every request. Use <code>curl -b cookies.txt</code> to replay it.</td>
+            </tr>
+            <tr>
+              <td>Authorization: Bearer</td>
+              <td>Scripts, backends, non-browser clients</td>
+              <td>Send the JWT explicitly: <code>Authorization: Bearer &lt;jwt&gt;</code> on each request.</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code><span class="c"># Bearer-header style</span>
+curl https://sentra.example.com/api/v1/graphql \
+  -H <span class="s">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"query":"{ sessionPage { session { email role } } }"}'</span></code></pre>
+
+        <h3>Refreshing and ending a session</h3>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/refresh <span>— exchanges the <code>refresh_token</code> cookie for a new <code>access_token</code>; 401 when invalid or expired</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/logout <span>— invalidates the session and clears cookies (204)</span></div>
+
+        <h2>Roles</h2>
+        <p>The JWT carries a <code>role</code> claim. Two roles gate elevated surfaces:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Role</th><th>Grants</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>admin</td><td>Admin REST endpoints (<code>/api/admin/*</code>, <code>/api/data-lab/*</code>).</td></tr>
+            <tr><td>super_admin</td><td>Everything <code>admin</code> grants, plus the superadmin GraphQL surface (<code>superAdminPage</code> requires <code>isSuperAdmin</code> in the session).</td></tr>
+          </tbody>
+        </table>
+        <p>Your effective role is visible in any GraphQL response through <code>sessionPage.session.role</code> and <code>sessionPage.session.isSuperAdmin</code>. Requests to admin endpoints without a qualifying role fail with <code>401</code>.</p>
+
+        <h2>Server-to-server: X-Service-Key</h2>
+        <p>Admin pipeline, prompt, and Data Lab endpoints accept a service key as an alternative to an admin JWT — designed for backend automation where no user session exists:</p>
+        <pre><code>curl https://sentra.example.com/api/admin/pipeline/summary \
+  -H <span class="s">"X-Service-Key: $SERVICE_KEY"</span></code></pre>
+        <p>These endpoints are marked as accepting <em>Bearer JWT (admin) or ServiceKeyAuth</em> in the <a href="rest-api.html">REST reference</a>. The inbound <a href="webhooks.html">webhook endpoint</a> uses a different scheme again — per-plugin HMAC signatures, no JWT at all.</p>
+
+        <h2>How tokens are verified</h2>
+        <p>Sentra does not own a user database — authentication is delegated to an auth gateway. Each inbound JWT is verified by calling the gateway's token-verify endpoint (configured via <code>FORT_URL</code>). For local development, setting <code>FORT_JWT_SECRET</code> enables direct HS256 verification in-process, skipping the HTTP hop. See <a href="deployment.html">Deployment</a> for the env-var contract.</p>
+
+        <h2>Security best practices</h2>
+        <div class="callout">
+          <strong>Prefer the cookie in browsers.</strong> The <code>access_token</code> cookie is HTTP-only — script code can never read it, which removes the most common token-theft path. Only use Bearer headers where cookies are impractical.
+        </div>
+        <div class="callout">
+          <strong>Refresh proactively.</strong> <code>expires_at</code> in the sign-in response tells you when the access token lapses. Call <code>POST /api/auth/refresh</code> before that instead of retrying failed requests.
+        </div>
+        <div class="callout warn">
+          <strong>Never expose service keys or admin JWTs to clients.</strong> <code>X-Service-Key</code> is for trusted backends only. If a key may have leaked, rotate it and audit the admin endpoints it can reach.
+        </div>
+        <div class="callout">
+          <strong>Expect rate limits on auth endpoints.</strong> Sign-in is limited to 10 req/min per IP and <code>login-methods</code> to 3 req/min per IP. Back off on 429-style failures rather than hammering the endpoint.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

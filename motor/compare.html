@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare — Motor</title>
+  <meta name="description" content="How Motor compares to Portainer, the Grafana stack, Backstage, and Datadog across control, observability, MCP agent surface, credentials, footprint, and cost.">
+  <link rel="icon" href="./assets/icon.svg">
+  <link rel="stylesheet" href="./assets/site.css">
+  <script src="./assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="./index.html"><img src="./assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html" class="active">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" style="padding-block: 80px 60px;">
+    <div class="container">
+      <span class="eyebrow">Compare</span>
+      <h1>How Motor <span class="accent">compares</span></h1>
+      <p class="sub">Operators today stitch together ops dashboards, observability stacks, developer portals, and SaaS monitoring. Motor sits across those categories: one self-hosted pane that both watches your fleet and acts on it.</p>
+    </div>
+  </section>
+
+  <!-- Positioning -->
+  <section class="section reveal">
+    <div class="container">
+      <h2>Strong tools, different jobs</h2>
+      <p class="lead" style="margin-bottom: 16px;">Each of these platforms earns its place. Portainer is the most mature container-management UX around. The Grafana stack is the world's dashboarding standard. Backstage is how big organizations catalog a thousand services. Datadog offers unmatched managed breadth with zero self-hosting burden.</p>
+      <p class="lead" style="margin-bottom: 0;">What none of them offers is a <strong style="color: var(--foreground);">single self-hosted control plane that spans your whole infrastructure — and acts on it</strong>: Docker, Proxmox, Cloudflare DNS, GitHub CI, GCP, and workspaces in one pane, with Sentry-compatible error tracking, logs, and uptime monitors built in, and every capability exposed to AI agents over MCP. That is the seat Motor takes.</p>
+    </div>
+  </section>
+
+  <!-- Comparison table -->
+  <section class="section alt reveal">
+    <div class="container">
+      <div class="section-head center">
+        <h2>Capability by capability</h2>
+        <p class="lead">Twelve axes that matter when a platform team picks its operator cockpit.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th scope="col">Capability</th>
+              <th scope="col" class="us">Motor</th>
+              <th scope="col">Portainer</th>
+              <th scope="col">Grafana stack</th>
+              <th scope="col">Backstage</th>
+              <th scope="col">Datadog</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Control + observability in one pane</th>
+              <td class="us"><span class="yes">✓</span> Both jobs — inspect and act</td>
+              <td><span class="part">◐</span> Control, containers only</td>
+              <td><span class="part">◐</span> Observe only — no control plane</td>
+              <td><span class="no">✗</span> Catalogs and docs, not live ops</td>
+              <td><span class="part">◐</span> Observe only — no control plane</td>
+            </tr>
+            <tr>
+              <th scope="row">Infrastructure surface breadth</th>
+              <td class="us"><span class="yes">✓</span> Docker, Proxmox VMs, Cloudflare DNS, GitHub/CI, GCP, Coder, nginx proxy, Postgres introspection</td>
+              <td><span class="part">◐</span> Containers — no VMs, DNS, cloud, or CI</td>
+              <td><span class="no">✗</span> Data sources, not infrastructure control</td>
+              <td><span class="no">✗</span> Catalog entries, not live infrastructure</td>
+              <td><span class="part">◐</span> Observes 800+ integrations — controls none</td>
+            </tr>
+            <tr>
+              <th scope="row">AI-agent control surface (MCP)</th>
+              <td class="us"><span class="yes">✓</span> Agents that <em>do</em> things: 33 tools operating infra, role-gated read vs mutate</td>
+              <td><span class="part">◐</span> Container-scoped, version-locked server</td>
+              <td><span class="part">◐</span> 40+ tools, but query-centric — operates Grafana, not your infra</td>
+              <td><span class="part">◐</span> Early catalog-actions plugin only</td>
+              <td><span class="part">◐</span> Read-context — agents look at things, don't do them</td>
+            </tr>
+            <tr>
+              <th scope="row">Credential model</th>
+              <td class="us"><span class="yes">✓</span> CLI delegation — runs as the operator's own gh/gcloud/coder session; no long-lived cloud tokens at rest</td>
+              <td><span class="no">✗</span> Stored API keys / service accounts</td>
+              <td><span class="no">✗</span> Stored API keys / service accounts</td>
+              <td><span class="no">✗</span> Stored API keys / service accounts</td>
+              <td><span class="no">✗</span> Stored API keys / service accounts</td>
+            </tr>
+            <tr>
+              <th scope="row">Self-hosted footprint</th>
+              <td class="us"><span class="yes">✓</span> One lightweight deployment: binary + Postgres + NATS</td>
+              <td><span class="yes">✓</span> CE is also light — fair play</td>
+              <td><span class="part">◐</span> Full LGTM stack is a multi-component distributed system</td>
+              <td><span class="no">✗</span> A build-a-platform project, not an install</td>
+              <td><span class="no">✗</span> No self-hosted option at all</td>
+            </tr>
+            <tr>
+              <th scope="row">Time-to-first-value</th>
+              <td class="us"><span class="yes">✓</span> Hours — each surface unlocks with one env var</td>
+              <td><span class="yes">✓</span> Fast, for containers</td>
+              <td><span class="part">◐</span> Assembly required across components</td>
+              <td><span class="no">✗</span> Months, with a dedicated team</td>
+              <td><span class="yes">✓</span> Also fast — the bill arrives later</td>
+            </tr>
+            <tr>
+              <th scope="row">Cost predictability</th>
+              <td class="us"><span class="yes">✓</span> Flat, self-hosted — no per-host or per-GB meters</td>
+              <td><span class="part">◐</span> Per-node business licensing</td>
+              <td><span class="part">◐</span> OSS free; Cloud usage-metered, Enterprise carries a high floor</td>
+              <td><span class="part">◐</span> Free software, expensive program — all-in builds run six to seven figures</td>
+              <td><span class="no">✗</span> Compounding per-host + per-GB line items; "bill shock" is a genre</td>
+            </tr>
+            <tr>
+              <th scope="row">Data ownership / residency</th>
+              <td class="us"><span class="yes">✓</span> Your metal, your data</td>
+              <td><span class="yes">✓</span> Self-hosted too — a tie</td>
+              <td><span class="yes">✓</span> OSS self-hosted ties; Grafana Cloud is SaaS</td>
+              <td><span class="yes">✓</span> Self-hosted too — a tie</td>
+              <td><span class="no">✗</span> SaaS only — data lives in their cloud</td>
+            </tr>
+            <tr>
+              <th scope="row">Built-in Sentry-compatible error tracking</th>
+              <td class="us"><span class="yes">✓</span> Point existing Sentry SDKs at Motor — DSN swap, no code change</td>
+              <td><span class="no">✗</span> Not offered</td>
+              <td><span class="no">✗</span> Not native — separate tooling</td>
+              <td><span class="no">✗</span> Not offered</td>
+              <td><span class="part">◐</span> Error Tracking as a paid add-on, own SDKs</td>
+            </tr>
+            <tr>
+              <th scope="row">Built-in uptime / cron / heartbeat monitors</th>
+              <td class="us"><span class="yes">✓</span> Auto-provisioned on first check-in</td>
+              <td><span class="no">✗</span> Not offered — bolt on a separate tool</td>
+              <td><span class="no">✗</span> Not built in — bolt on a separate tool</td>
+              <td><span class="no">✗</span> Not offered</td>
+              <td><span class="part">◐</span> Synthetics — another paid product</td>
+            </tr>
+            <tr>
+              <th scope="row">Dashboarding &amp; query depth</th>
+              <td class="us"><span class="part">◐</span> Opinionated built-ins — a cockpit, not a telescope. No PromQL/LogQL engine</td>
+              <td><span class="part">◐</span> Container views</td>
+              <td><span class="yes">✓</span> The world standard — Grafana wins this row</td>
+              <td><span class="no">✗</span> Not its job</td>
+              <td><span class="yes">✓</span> Deep, polished analytics</td>
+            </tr>
+            <tr>
+              <th scope="row">Scale ceiling / enterprise fit</th>
+              <td class="us"><span class="part">◐</span> Built for the 2–10 person platform team running heterogeneous infra — not 1,000-dev orgs</td>
+              <td><span class="yes">✓</span> Mature K8s RBAC at scale</td>
+              <td><span class="yes">✓</span> Proven at org scale</td>
+              <td><span class="yes">✓</span> 1,000-developer governance is the point</td>
+              <td><span class="yes">✓</span> Org-scale, if the budget is</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="color: var(--muted); font-size: 0.82rem; margin-top: 14px;">Comparison based on publicly available information, 2026. Verify against vendors' current offerings.</p>
+      <p style="color: var(--muted); font-size: 0.82rem; margin-top: 6px;">Motor also absorbs the point solutions teams usually bolt on: self-hosted Sentry realistically means ~50 containers, and Uptime Kuma is single-instance without RBAC — Motor's built-in error tracking and heartbeat monitors replace both.</p>
+
+      <!-- Strategic MCP callout -->
+      <div class="reveal" style="margin-top: 36px; border: 1px solid color-mix(in srgb, var(--gold-500) 50%, var(--border)); border-radius: var(--radius); padding: 30px 28px; background: linear-gradient(160deg, color-mix(in srgb, var(--gold-500) 9%, var(--surface)), var(--surface));">
+        <span class="eyebrow" style="margin-bottom: 8px;">The strategic difference</span>
+        <h3 style="font-size: 1.3rem; margin-bottom: 10px;">Every vendor has an MCP server now. Motor is the one where MCP <em>is</em> the control plane.</h3>
+        <p style="color: var(--muted); font-size: 0.97rem; max-width: 820px;">Portainer, Grafana, Backstage, and Datadog all ship MCP servers — and almost all of them let an agent <strong style="color: var(--foreground);">look at</strong> their own product. Motor exposes 33 role-gated tools that let an agent <strong style="color: var(--foreground);">operate your infrastructure</strong> across 9+ systems: restart containers, dispatch CI, purge DNS caches and NATS streams, drive workspaces. Write-capable tools are admin-only, behind the same auth gates as the UI — an agent can do things, not just look at things.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px;">
+          <span class="pill gold">33 MCP tools</span>
+          <span class="pill gold">Read vs mutate, role-gated</span>
+          <span class="pill gold">9+ systems operated</span>
+          <span class="pill gold">Same auth as the UI</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vs cards -->
+  <section class="section reveal">
+    <div class="container">
+      <div class="section-head center">
+        <h2>Head to head</h2>
+        <p class="lead">When each platform is the right call — and when Motor is.</p>
+      </div>
+      <div class="grid grid-2 reveal-stagger">
+        <div class="card">
+          <h3>Motor vs Portainer</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Portainer</strong> if your world is containers, full stop — it's the most mature Docker/Kubernetes management UX, multi-environment, with a free edition up to 3 nodes.</li>
+            <li><strong style="color: var(--foreground);">Choose Motor</strong> when containers are one surface among many: VMs on Proxmox, DNS on Cloudflare, CI on GitHub, GCP projects, workspaces — plus errors, logs, and uptime, in one pane.</li>
+            <li>Portainer has no observability side — no error tracking, no log search, no heartbeat monitors. Motor ships all three built in.</li>
+            <li>Portainer Business runs per-node with features migrating out of the free edition; Motor is flat, self-hosted licensing.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Motor vs the Grafana stack</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Grafana + Prometheus + Loki</strong> when you need best-in-class dashboards and deep PromQL/LogQL query power — it is the standard, and Motor doesn't pretend otherwise.</li>
+            <li><strong style="color: var(--foreground);">Choose Motor</strong> when observing isn't enough: Grafana can show you the failing container, but it can't restart it, touch DNS, or dispatch CI. Motor does both jobs.</li>
+            <li>Self-hosting the full LGTM stack means running a multi-component distributed system; Motor is one binary plus Postgres and NATS.</li>
+            <li>Grafana's MCP is the strongest of the four — but it operates Grafana, not your infrastructure. Motor's MCP is the control plane itself.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Motor vs Backstage</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Backstage</strong> if you're a large organization standardizing hundreds of services and dev teams around a catalog, scaffolder, and TechDocs — that's what it's for.</li>
+            <li><strong style="color: var(--foreground);">Choose Motor</strong> when you need live infrastructure control and observability this quarter, not a portal program: Motor is a product you deploy, not a framework you staff.</li>
+            <li>Real Backstage deployments take dedicated engineers for years, with all-in estimates from $200k to over $1M; Motor delivers value in hours.</li>
+            <li>Backstage catalogs what exists; Motor shows what's happening and lets you act on it — including through AI agents over MCP.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Motor vs Datadog</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Datadog</strong> for managed breadth with zero self-hosting: infra, APM, logs, RUM, and security in one polished SaaS — nothing else covers as much.</li>
+            <li><strong style="color: var(--foreground);">Choose Motor</strong> when the compounding per-host and per-GB meters stop making sense — mid-market bills reaching six figures and growing yearly are a documented pattern.</li>
+            <li>Datadog observes; it doesn't operate. And it has no self-hosted option — your telemetry lives in their cloud. Motor runs on your metal and acts on your infra.</li>
+            <li>Datadog's error tracking and synthetics are separate paid products; Motor's Sentry-compatible ingest and heartbeat monitors are built in.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom line -->
+  <section class="section alt reveal">
+    <div class="container">
+      <div class="section-head center">
+        <h2>The bottom line</h2>
+        <p class="lead">Three things you can only get from Motor in this lineup.</p>
+      </div>
+      <div class="grid grid-3 reveal-stagger">
+        <div class="card">
+          <div class="icon" aria-hidden="true">⬢</div>
+          <h3>One pane, both jobs</h3>
+          <p>The others observe or control — Motor does both. Inspect and act across Docker, Proxmox, Cloudflare, GitHub CI, GCP, and workspaces, with errors, logs, and uptime monitors in the same authenticated dashboard.</p>
+        </div>
+        <div class="card">
+          <div class="icon" aria-hidden="true">◈</div>
+          <h3>Agents included</h3>
+          <p>33 MCP tools with the same role gates as the UI — read for everyone, mutations admin-only. Your AI agents operate the infrastructure, not just query a product. No separate agent API to build.</p>
+        </div>
+        <div class="card">
+          <div class="icon" aria-hidden="true">⌘</div>
+          <h3>Flat cost, your metal</h3>
+          <p>Self-hosted as one lightweight deployment, with no per-host, per-GB, or per-node meters — and no long-lived cloud tokens at rest, thanks to CLI delegation. Your data never leaves your infrastructure.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="cta-band">
+    <div class="container">
+      <h2>Stop stitching four tools together</h2>
+      <p style="margin: 14px auto 0; max-width: 620px;">Talk to us about a self-hosted deployment, or start by pointing an existing Sentry SDK at Motor.</p>
+      <div style="display: flex; gap: 14px; justify-content: center; margin-top: 32px; flex-wrap: wrap;">
+        <a class="btn btn-primary" href="https://id8media.com/en/contact">Talk to us</a>
+        <a class="btn btn-outline" href="./developers/index.html">Explore the API</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

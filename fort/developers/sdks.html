@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDKs — Fort</title>
+  <meta name="description" content="Fort's SDK family: auth, admin, billing and storage packages for TypeScript and Go — clients, middleware, React widgets, and an umbrella package.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html" class="active">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>SDKs</h1>
+        <p class="lead">Fort ships a real, working SDK family — four packages split by concern, plus an umbrella that re-exports them all. TypeScript packages target Next.js/React products (with embeddable UI widgets); Go packages give backend services middleware and typed clients.</p>
+
+        <h2>The family at a glance</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>Package</th><th>TypeScript</th><th>Go</th><th>What it covers</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>@sentra/fort-auth-sdk</td><td>Yes — clients, hooks, widgets</td><td>Yes (<code>package fort</code>)</td><td>Auth core: login/session clients, token verification, middleware, branding, profile, auth + lock-screen widgets.</td></tr>
+            <tr><td>@sentra/fort-admin-sdk</td><td>Yes — clients + admin pages</td><td>Yes (<code>package fortadmin</code>)</td><td>Admin users, roles, settings and feature-flags clients; drop-in admin UI pages; role-check helpers.</td></tr>
+            <tr><td>@sentra/fort-billing-sdk</td><td>Yes</td><td>Yes (<code>package fortbilling</code>)</td><td>Usage metering, invoices, price-books, customers.</td></tr>
+            <tr><td>@sentra/fort-storage-sdk</td><td>Yes</td><td>—</td><td>Media/object client + media-library widget. TypeScript only.</td></tr>
+            <tr><td>@sentra/fort-sdk</td><td>Yes (umbrella)</td><td>—</td><td>Re-exports all four TS families as one dependency.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>Go note.</strong> There is no single top-level Go module — each family ships its own Go package under its directory (<code>sdk/auth/go</code> = <code>fort</code>, <code>sdk/admin/go</code> = <code>fortadmin</code>, <code>sdk/billing/go</code> = <code>fortbilling</code>). Storage has no Go client.
+        </div>
+
+        <h2>Install</h2>
+        <p>Each TS package requires Node 18+ and comes with cross-platform install scripts that build the package (and its sibling dependencies) and verify <code>dist/</code>:</p>
+        <pre><code><span class="c"># macOS / Linux (or Git Bash) — from the package directory</span>
+./install.sh                 <span class="c"># build in place, ready to import</span>
+./install.sh /path/to/app    <span class="c"># build + install into that app</span>
+
+<span class="c"># or as a git dependency</span>
+npm install github:sentra-intel/fort-auth-sdk</code></pre>
+
+        <h2>@sentra/fort-auth-sdk <span class="pill gold">TS</span> <span class="pill">Go</span></h2>
+        <p><strong>TypeScript exports</strong>: <code>FortAuthClient</code>, <code>FortBrandingClient</code>/<code>fetchBranding</code>, <code>FortProfileClient</code>, <code>verifyToken</code>/<code>verifyHS256</code>, <code>fortMiddleware</code> (Next.js middleware), the <code>FortProvider</code> context (<code>useFort</code>, <code>useFortAuth</code>, <code>useFortMeta</code>), and UI widgets: <code>FortAuthWidget</code>, <code>FortUserMenu</code>, <code>FortProfileWidget</code>, <code>FortProfilePages</code>, <code>FortLockScreen</code>, <code>FortPasswordLockScreen</code>.</p>
+        <pre><code><span class="c">// Next.js — wrap the app, drop in the login widget, gate routes</span>
+<span class="k">import</span> { FortProvider, FortAuthWidget, fortMiddleware } <span class="k">from</span> <span class="s">'@sentra/fort-auth-sdk'</span>
+
+&lt;<span class="k">FortProvider</span> baseUrl={process.env.NEXT_PUBLIC_FORT_URL}&gt;{children}&lt;/<span class="k">FortProvider</span>&gt;
+&lt;<span class="k">FortAuthWidget</span> onAuthenticated={() =&gt; location.assign(<span class="s">'/dashboard'</span>)} /&gt;
+
+<span class="c">// middleware.ts — verify the session cookie on every request</span>
+<span class="k">export</span> <span class="k">const</span> middleware = fortMiddleware({ baseUrl: process.env.FORT_URL })</code></pre>
+        <p>The provider fetches <code>/v1/branding</code> before login, so the widget renders your platform's name, colors and enabled login methods with zero configuration — OTP and 2FA steps included.</p>
+
+        <h3>Go package (<code>fort</code>)</h3>
+        <p><strong>Exports</strong>: <code>NewClient</code>/<code>Config</code> (<code>BaseURL</code>, <code>Timeout</code>, <code>JWTSecret</code>, <code>PlatformToken</code>), <code>Client.VerifyToken</code>, <code>VerifyHS256</code>, <code>ExtractBearer</code>, <code>Middleware</code>, <code>RequireRole</code>, <code>ClaimsFromContext</code>, and <code>Claims</code> with <code>HasRole</code>.</p>
+        <pre><code><span class="c">// Guard your service's routes with Fort — HTTP verify, no shared secret</span>
+cfg := fort.<span class="k">Config</span>{BaseURL: <span class="s">"https://fort.example.com"</span>}
+
+mux.Handle(<span class="s">"/admin"</span>,
+    fort.<span class="k">Middleware</span>(cfg)(
+        fort.<span class="k">RequireRole</span>(<span class="s">"admin"</span>)(adminHandler),
+    ),
+)
+
+<span class="c">// Read the verified identity downstream</span>
+claims, ok := fort.<span class="k">ClaimsFromContext</span>(r.Context())
+<span class="k">if</span> ok {
+    userID := claims.Sub                      <span class="c">// never trust a client-supplied id</span>
+    isOps  := claims.<span class="k">HasRole</span>(<span class="s">"security_operator"</span>)  <span class="c">// checks Role + Roles[]</span>
+}</code></pre>
+        <div class="callout">
+          <strong>Two verification modes, one switch.</strong> Leave <code>Config.JWTSecret</code> empty and <code>Middleware</code> verifies over <code>POST /v1/token/verify</code> (recommended). Set it, and verification happens locally with <code>VerifyHS256</code> — for deployments that already share the secret. Set <code>Config.PlatformToken</code> (from <code>FORT_PLATFORM_TOKEN</code>) and every call carries your <code>X-Fort-Platform</code> identity.
+        </div>
+        <div class="callout warn">
+          <strong><code>RequireRole</code> checks the primary <code>role</code> claim only.</strong> When your access rule should also match RBAC-granted roles in <code>roles[]</code>, check <code>claims.HasRole(…)</code> in your handler (or use the admin package's <code>RequireAnyRole</code>).
+        </div>
+
+        <h2>@sentra/fort-admin-sdk <span class="pill gold">TS</span> <span class="pill">Go</span></h2>
+        <p><strong>TypeScript</strong>: <code>FortAdminUsersClient</code>, <code>FortRolesClient</code>, <code>FortAdminSettingsClient</code>, <code>FortFlagsClient</code>, plus full admin UI pages — <code>FortAdminUsersPages</code>, <code>FortRolesPages</code>, <code>FortAdminSettingsPages</code> — so a consuming product gets a user-management screen without building one.</p>
+        <pre><code><span class="k">import</span> { FortAdminUsersClient } <span class="k">from</span> <span class="s">'@sentra/fort-admin-sdk'</span>
+
+<span class="k">const</span> users = <span class="k">new</span> FortAdminUsersClient({ baseUrl: <span class="s">'/api/v1'</span>, platform: <span class="s">'acme'</span> })
+<span class="k">await</span> users.list({ limit: 50 })</code></pre>
+        <p><strong>Go</strong> (<code>fortadmin</code>): <code>FlagsClient</code> (<code>Enabled</code>, <code>Value</code> — cached feature-flag reads), <code>SettingsClient.Get</code>, <code>RequireAnyRole(…)</code> middleware, and claim helpers <code>ClaimsIsAdmin</code> / <code>ClaimsIsSuperAdmin</code>.</p>
+
+        <h2>@sentra/fort-billing-sdk <span class="pill gold">TS</span> <span class="pill">Go</span></h2>
+        <p>Usage metering and invoicing against Fort's billing subsystem, callable from any product:</p>
+        <pre><code><span class="c">// TypeScript</span>
+<span class="k">import</span> { FortBillingClient } <span class="k">from</span> <span class="s">'@sentra/fort-billing-sdk'</span>
+
+<span class="k">const</span> billing = <span class="k">new</span> FortBillingClient({
+  baseUrl: process.env.FORT_URL,
+  platformToken: process.env.FORT_PLATFORM_TOKEN,
+})
+<span class="k">await</span> billing.recordUsage({ metric: <span class="s">'tokens'</span>, quantity: 1280, source: <span class="s">'reporting'</span> })
+<span class="k">const</span> { items: invoices } = <span class="k">await</span> billing.listInvoices(<span class="s">'acme'</span>)</code></pre>
+        <p><strong>Go</strong> (<code>fortbilling</code>): <code>NewClient(fort.Config)</code> with <code>RecordUsage(ctx, UsageEvent)</code> and <code>GenerateInvoice(ctx, accessToken, GenerateInvoiceInput)</code>.</p>
+
+        <h2>@sentra/fort-storage-sdk <span class="pill gold">TS</span></h2>
+        <p>Media/object client and a ready-made media-library widget (TypeScript only):</p>
+        <pre><code><span class="k">import</span> { FortMediaClient, FortMediaLibrary } <span class="k">from</span> <span class="s">'@sentra/fort-storage-sdk'</span>
+
+<span class="k">const</span> media = <span class="k">new</span> FortMediaClient({ baseUrl: <span class="s">'/api/v1'</span> })
+<span class="k">const</span> asset = <span class="k">await</span> media.upload(file)
+&lt;<span class="k">FortMediaLibrary</span> onSelect={(a) =&gt; console.log(a.url)} /&gt;</code></pre>
+
+        <h2>@sentra/fort-sdk — the umbrella <span class="pill gold">TS</span></h2>
+        <p>One dependency that re-exports the auth, admin, storage and billing families. Use it when a product consumes several families; depend on individual packages when you want a smaller surface. Peer dependencies (<code>next</code>, <code>react</code>, and the <code>@prism/ui</code> design system for widgets) are optional — server-side usage works without them.</p>
+
+        <h2>Choosing your integration</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>You are building</th><th>Use</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A Next.js product that needs login/2FA/profile UI</td><td><code>fort-auth-sdk</code> — <code>FortProvider</code> + widgets + <code>fortMiddleware</code></td></tr>
+            <tr><td>A Go service that consumes Fort-authenticated traffic</td><td><code>fort-auth-sdk</code>'s Go package — <code>Middleware</code> + <code>RequireRole</code></td></tr>
+            <tr><td>An admin area (users, roles, flags) inside your product</td><td><code>fort-admin-sdk</code> — clients + drop-in pages</td></tr>
+            <tr><td>Metered billing for your product's usage</td><td><code>fort-billing-sdk</code></td></tr>
+            <tr><td>Uploads and a media picker</td><td><code>fort-storage-sdk</code> (TS)</td></tr>
+            <tr><td>Anything without an SDK (other languages)</td><td>The <a href="api.html">REST API</a> directly — verification is one POST</td></tr>
+          </tbody>
+        </table>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

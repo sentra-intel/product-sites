@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor — The Operator's Control Plane</title>
+  <meta name="description" content="Motor by ID8 Media — one self-hosted cockpit for infra control and observability. Docker, Proxmox, Cloudflare, GitHub CI, GCP and Coder in one pane, plus Sentry-compatible error ingest, logs and heartbeats. MCP-native, credential-less by design.">
+  <link rel="icon" href="./assets/icon.svg">
+  <link rel="stylesheet" href="./assets/site.css">
+  <script src="./assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="./index.html"><img src="./assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="./index.html" class="active">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <p class="eyebrow">By ID8 Media</p>
+      <h1>One cockpit for <span class="accent">everything you run</span></h1>
+      <p class="sub">Motor unifies infra control and the observability hub in a single self-hosted dashboard — act on Docker, Proxmox, DNS and CI while errors, logs and heartbeats from your whole fleet land in the same pane. MCP-native, so your agents can operate it too.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
+        <a class="btn btn-outline" href="./developers/index.html">Explore the docs</a>
+      </div>
+      <div class="cta-row" aria-label="Key facts">
+        <span class="pill">Self-hosted</span>
+        <span class="pill">MCP-native</span>
+        <span class="pill">Sentry-compatible ingest</span>
+        <span class="pill gold">No cloud tokens stored — CLI delegation</span>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="browser">
+          <div class="browser-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="addr">motor — operator control plane</span>
+          </div>
+          <div class="mock">
+            <div class="mock-side">
+              <div class="item on"><span class="sq"></span> Overview</div>
+              <div class="item"><span class="sq"></span> Errors</div>
+              <div class="item"><span class="sq"></span> Logs</div>
+              <div class="item"><span class="sq"></span> Monitors</div>
+              <div class="item"><span class="sq"></span> NATS</div>
+              <div class="item"><span class="sq"></span> Docker</div>
+              <div class="item"><span class="sq"></span> DNS</div>
+              <div class="item"><span class="sq"></span> CI/CD</div>
+            </div>
+            <div class="mock-main">
+              <div class="mock-stats">
+                <div class="mock-stat"><div class="v">47</div><div class="k">Containers</div></div>
+                <div class="mock-stat"><div class="v">12</div><div class="k">Open issues</div></div>
+                <div class="mock-stat"><div class="v up">✓ 31/32</div><div class="k">Monitors</div></div>
+              </div>
+              <div class="mock-chart">
+                <i style="height:28%"></i><i style="height:44%"></i><i style="height:36%"></i>
+                <i style="height:58%"></i><i class="g" style="height:84%"></i><i style="height:52%"></i>
+                <i style="height:64%"></i><i style="height:40%"></i><i style="height:55%"></i>
+                <i style="height:71%"></i><i style="height:47%"></i><i style="height:60%"></i>
+              </div>
+              <div class="mock-map"><span class="pulse"></span> 3 services degraded · investigating</div>
+            </div>
+            <div class="mock-feed">
+              <div class="t"><span class="live-dot"></span> Live events</div>
+              <div class="alert-row"><span class="sev critical"></span><strong>Error spike — api-gateway</strong><div class="meta">2 min ago · 38 events, same fingerprint</div></div>
+              <div class="alert-row"><span class="sev high"></span><strong>Cron missed check-in</strong><div class="meta">9 min ago · nightly-backup monitor</div></div>
+              <div class="alert-row"><span class="sev low"></span><strong>Deploy finished</strong><div class="meta">14 min ago · workflow run #482 ✓</div></div>
+              <div class="alert-row"><span class="sev medium"></span><strong>Container restarted</strong><div class="meta">21 min ago · worker-3 on host-b</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="stats">
+        <div class="stat"><div class="num"><span data-count="9" data-suffix="+">0</span></div><div class="label">infrastructure surfaces</div></div>
+        <div class="stat"><div class="num"><span data-count="33">0</span></div><div class="label">MCP tools</div></div>
+        <div class="stat"><div class="num"><span data-count="4">0</span></div><div class="label">ingest endpoints — Sentry-compatible</div></div>
+        <div class="stat"><div class="num"><span data-count="1">0</span></div><div class="label">self-hosted binary</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Two jobs, one pane</p>
+        <h2>Act on your infrastructure.<br>Hear from your fleet.</h2>
+        <p class="lead">Most teams run one console per vendor and one Sentry per product. Motor collapses both jobs into a single authenticated dashboard.</p>
+      </div>
+      <div class="grid grid-2 reveal-stagger">
+        <div class="card">
+          <div class="icon">🎛</div>
+          <h3>Control</h3>
+          <p>Inspect and act on every surface the platform runs on — start and stop containers, dispatch workflows, purge DNS cache, manage workspaces. Live state plus the actions operators actually use.</p>
+          <p style="margin-top:14px">
+            <span class="pill">docker</span> <span class="pill">proxmox</span> <span class="pill">cloudflare dns</span>
+            <span class="pill">github ci</span> <span class="pill">gcp</span> <span class="pill">coder workspaces</span>
+            <span class="pill">nginx proxy</span> <span class="pill">postgres introspection</span>
+          </p>
+        </div>
+        <div class="card">
+          <div class="icon">📡</div>
+          <h3>Observe</h3>
+          <p>One ingest point for the whole fleet — errors grouped by fingerprint, structured log search, uptime and cron-heartbeat monitors auto-provisioned on first check-in, and JetStream monitoring with stream control.</p>
+          <p style="margin-top:14px">
+            <span class="pill">errors</span> <span class="pill">logs</span>
+            <span class="pill">uptime monitors</span> <span class="pill">cron heartbeats</span>
+            <span class="pill">nats streams</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">MCP-native</p>
+          <h3>Your agents can operate it too</h3>
+          <p>Motor exposes its full data and action surface to AI agents over MCP — 33 tools behind the same role gates as the UI. Read-only tools for any valid token; mutating tools for admins only. No separate agent API, no second permission model.</p>
+        </div>
+        <div class="panel">
+          <div class="chat" aria-label="Agent conversation example">
+            <div class="msg user">Restart the stuck container and dispatch the deploy workflow</div>
+            <div class="msg bot">Restarted <strong>worker-3</strong> on host-b, then dispatched <strong>deploy.yml</strong> on master — both confirmed. ✓ done
+              <br><span class="cite">motor_docker_container_action</span><span class="cite">motor_dispatch_ci</span><span class="cite">role: admin</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c"># Before — errors go to a vendor cloud</span>
+SENTRY_DSN=<span class="s">https://a1b2c3@sentry.io/123</span>
+
+<span class="c"># After — same SDK, your Motor</span>
+SENTRY_DSN=<span class="s">https://a1b2c3@motor.example.com/1</span></code></pre>
+        </div>
+        <div>
+          <p class="kicker">Zero code change</p>
+          <h3>Point your Sentry SDKs at Motor</h3>
+          <p>Motor's ingest speaks the Sentry API — classic <code>/store/</code> and modern <code>/envelope/</code>. Keep the SDKs you already ship, swap the DSN, and issues arrive grouped by fingerprint. Logs and cron heartbeats ride the same endpoints.</p>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">Credential-less by design</p>
+          <h3>No tokens to leak</h3>
+          <p>Motor never stores long-lived <code>GH_TOKEN</code> or GCP credentials in env. The service shells out to your CLI session — every GitHub and GCP action runs as the operator who clicked, with the operator's own permissions. Nothing to rotate, nothing to steal.</p>
+        </div>
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c"># How Motor authenticates to GitHub &amp; GCP</span>
+$ <span class="k">gh auth token</span>
+$ <span class="k">gcloud auth print-access-token</span>
+
+<span class="c"># → runs as YOUR session, per request</span>
+<span class="c"># no GH_TOKEN / GCP_* in env. ever.</span></code></pre>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div class="panel">
+          <div class="alert-row"><span class="sev low"></span><strong>Cloudflare DNS</strong> — ✓ live<div class="meta">records loaded · cache purge available</div></div>
+          <div class="alert-row"><span class="sev medium"></span><strong>Not configured</strong><div class="meta">Set CF_API_TOKEN to enable this surface</div></div>
+        </div>
+        <div>
+          <p class="kicker">Graceful by design</p>
+          <h3>Every surface degrades politely</h3>
+          <p>Start with zero integrations — each unconfigured surface shows a card naming the exact env var that unlocks it, never a crash. And Motor is read-mostly: every destructive action (stop container, purge stream, dispatch CI) asks for explicit confirmation first.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">The difference</p>
+        <h2>Your 3am incident, before and after</h2>
+      </div>
+      <div class="ba reveal" style="margin-top:36px">
+        <div class="col before">
+          <h4>Six consoles and a Sentry per product</h4>
+          <ul>
+            <li>Cloudflare, Proxmox, GitHub, GCP, Coder, NPM — a tab for each</li>
+            <li>A separate error tracker per product to run, patch and check</li>
+            <li>Long-lived service tokens sitting in env files, waiting to leak</li>
+            <li>The incident starts with "which console was it again?"</li>
+          </ul>
+        </div>
+        <div class="col after">
+          <h4>One Motor</h4>
+          <ul>
+            <li>Every surface live in a single authenticated dashboard</li>
+            <li>One ingest point for the whole fleet — same SDKs, new DSN</li>
+            <li>Actions run as your live CLI session — nothing stored to rotate</li>
+            <li>Errors, logs, heartbeats and the fix in the same pane</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Use cases</p>
+        <h2>Built for the people who carry the pager</h2>
+      </div>
+      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
+        <div class="tile"><span class="glyph">🚨</span><div><h4>Incident response</h4><p>Errors, logs, heartbeats and NATS stream actions side by side — triage and act without switching tools.</p></div></div>
+        <div class="tile"><span class="glyph">🐛</span><div><h4>Fleet error tracking</h4><p>Every product reports to one place. Issues grouped by fingerprint, searchable across the fleet.</p></div></div>
+        <div class="tile"><span class="glyph">🤖</span><div><h4>AI-agent ops</h4><p>A Fort-authenticated agent drives workspaces, CI, NATS and issue triage through 33 MCP tools.</p></div></div>
+        <div class="tile"><span class="glyph">⏱</span><div><h4>Cron &amp; heartbeat coverage</h4><p>Monitors auto-provision on first check-in — a silent nightly job becomes a visible alert.</p></div></div>
+        <div class="tile"><span class="glyph">🌐</span><div><h4>DNS &amp; proxy management</h4><p>Cloudflare records, cache purge and Nginx proxy hosts — domains to upstreams in one view.</p></div></div>
+        <div class="tile"><span class="glyph">🚀</span><div><h4>CI dispatch from one place</h4><p>Watch workflow runs across repos and dispatch deploys — as your own GitHub session.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Safe to hand the keys</p>
+        <h2>Guard rails on every action</h2>
+      </div>
+      <div class="sec-badges reveal">
+        <span class="pill gold">Fort-gated auth</span>
+        <span class="pill">Role-gated mutations</span>
+        <span class="pill">Confirm before destructive actions</span>
+        <span class="pill">DSN-authed ingest</span>
+        <span class="pill">Self-hosted</span>
+        <span class="pill">Your data stays yours</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt" style="padding-block:56px">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Every surface, one pane</p>
+        <h2>From containers to cron jobs</h2>
+      </div>
+    </div>
+    <div class="ticker-wrap" style="margin-top:28px" aria-hidden="true">
+      <div class="ticker">
+        <span class="pill">docker</span><span class="pill">proxmox</span><span class="pill">cloudflare dns</span><span class="pill">github ci</span><span class="pill">gcp</span><span class="pill">coder workspaces</span><span class="pill">nginx proxy</span><span class="pill">postgres introspection</span><span class="pill">errors</span><span class="pill">logs</span><span class="pill">uptime monitors</span><span class="pill">cron heartbeats</span><span class="pill">nats streams</span><span class="pill">billing</span><span class="pill">feedback</span><span class="pill">plugins</span><span class="pill">mcp admin</span><span class="pill">mcp user</span>
+        <span class="pill">docker</span><span class="pill">proxmox</span><span class="pill">cloudflare dns</span><span class="pill">github ci</span><span class="pill">gcp</span><span class="pill">coder workspaces</span><span class="pill">nginx proxy</span><span class="pill">postgres introspection</span><span class="pill">errors</span><span class="pill">logs</span><span class="pill">uptime monitors</span><span class="pill">cron heartbeats</span><span class="pill">nats streams</span><span class="pill">billing</span><span class="pill">feedback</span><span class="pill">plugins</span><span class="pill">mcp admin</span><span class="pill">mcp user</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">For developers</p>
+          <h3>Wired for builders</h3>
+          <p>A full REST API behind the dashboard, Sentry-compatible ingest for anything you already run, and real SDKs: motor-obs for Go and TypeScript, the motor-feedback drop-in widget, and motor-admin panels you can embed in any product — plus the whole surface over MCP.</p>
+          <p style="margin-top:14px"><a class="btn btn-outline" href="./developers/index.html">Open the developer portal</a></p>
+        </div>
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c"># Is Motor up?</span>
+curl <span class="s">https://motor.example.com/healthz</span>
+
+<span class="c"># Ship an error — any Sentry SDK, or raw</span>
+curl -X POST <span class="s">https://motor.example.com/api/1/store/</span> \
+  -H <span class="s">'X-Sentry-Auth: Sentry sentry_key=…'</span> \
+  -d <span class="s">'{"message":"boom","level":"error"}'</span></code></pre>
+        </div>
+      </div>
+      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
+        <div class="tile"><span class="glyph">📦</span><div><h4>motor-obs</h4><p>Go and TypeScript SDKs — ship logs, errors and heartbeats from your services in a few lines.</p></div></div>
+        <div class="tile"><span class="glyph">💬</span><div><h4>motor-feedback</h4><p>A drop-in browser widget that turns user reports into triaged issues, screenshots included.</p></div></div>
+        <div class="tile"><span class="glyph">🧩</span><div><h4>motor-admin</h4><p>Embed Motor's logs, errors and feedback panels inside any product's own admin.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="container">
+      <h2>See Motor on your own infrastructure</h2>
+      <p style="margin:12px 0 28px">A live demo takes 30 minutes. Self-hosted, one binary — your fleet, your data, your control plane.</p>
+      <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

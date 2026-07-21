@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deployment &amp; Self-Hosting — Sentra</title>
+  <meta name="description" content="Self-host Sentra: requirements, the environment-variable contract, Docker and Kubernetes deployment, migrations, health probes, and a production checklist.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html" class="active">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Deployment &amp; self-hosting</h1>
+        <p class="lead">Sentra is a single Go binary plus its own PostgreSQL — self-hostable on Docker, Kubernetes, or a cloud container runtime, including sovereign/on-prem environments. This page covers the environment contract and the deployment paths.</p>
+
+        <h2>Requirements</h2>
+        <ul>
+          <li><strong>The <code>sentra-hub</code> binary</strong> — the backend image builds with CGO enabled (Tesseract/Leptonica OCR is linked for the copilot image tool); the provided Dockerfile handles this.</li>
+          <li><strong>PostgreSQL 17</strong> — Sentra owns its database (local dev runs the <code>paradedb/paradedb:latest-pg17</code> image). Row Level Security is enabled on every table.</li>
+          <li><strong>Optional services</strong> — NATS (envelope collection seam), Redis (config + capability nav cache), an AI inference gateway or direct provider keys, and the auth gateway.</li>
+        </ul>
+
+        <h2>Environment-variable contract</h2>
+        <h3>Bridge (backend)</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>DATABASE_URL</td><td>yes</td><td>Postgres connection string</td></tr>
+            <tr><td>JWT_SECRET</td><td>yes</td><td>HS256 signing secret for session JWTs</td></tr>
+            <tr><td>SUPABASE_SERVICE_KEY</td><td>yes</td><td>Service role key for internal auth-stack calls</td></tr>
+            <tr><td>GOTRUE_URL</td><td>yes</td><td>GoTrue auth URL</td></tr>
+            <tr><td>PORT</td><td>no (default 8090)</td><td>Bridge HTTP listen port</td></tr>
+            <tr><td>APP_ENV</td><td>no (default production)</td><td><code>development</code> enables dev seeds</td></tr>
+            <tr><td>CORS_ORIGINS</td><td>yes</td><td>Comma-separated allowed CORS origins</td></tr>
+            <tr><td>FORT_URL</td><td>yes</td><td>Auth gateway URL (token verification)</td></tr>
+            <tr><td>FORT_PLATFORM_TOKEN</td><td>yes</td><td>Sentra's platform token for the auth gateway</td></tr>
+            <tr><td>FORT_JWT_SECRET</td><td>no</td><td>Local HS256 verify (skips the HTTP hop; dev)</td></tr>
+            <tr><td>CORTEX_HTTP_ADDR</td><td>no</td><td>AI inference gateway URL (OpenAI-compatible)</td></tr>
+            <tr><td>CORTEX_TOKEN</td><td>no</td><td>AI gateway API key</td></tr>
+            <tr><td>SCOUT_NATS_URL</td><td>no</td><td>Collection-layer NATS URL for envelope subscription</td></tr>
+            <tr><td>SCOUT_TOKEN</td><td>no</td><td>Collection-layer NATS auth token</td></tr>
+            <tr><td>TRANSLATION_URL</td><td>no</td><td>NLLB translation service URL</td></tr>
+            <tr><td>REDIS_URL</td><td>no</td><td>Redis for config + capability nav cache</td></tr>
+            <tr><td>PLUGIN_HOST_ENABLED</td><td>no</td><td><code>true</code> embeds the plugin host in the bridge process</td></tr>
+            <tr><td>GOOGLE_API_KEY</td><td>no</td><td>Gemini API key for the copilot (direct-provider fallback)</td></tr>
+            <tr><td>GOOGLE_CLOUD_PROJECT</td><td>no</td><td>GCP project for Vertex AI</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Web dashboard</h3>
+        <table class="docs">
+          <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>NEXT_PUBLIC_BRIDGE_URL</td><td>yes</td><td>Bridge URL (browser-visible)</td></tr>
+            <tr><td>LOCAL_BRIDGE_URL</td><td>yes</td><td>Bridge URL for server-side API routes</td></tr>
+            <tr><td>NEXT_PUBLIC_SUPABASE_URL</td><td>yes</td><td>Auth-stack gateway URL</td></tr>
+            <tr><td>NEXT_PUBLIC_SUPABASE_ANON_KEY</td><td>yes</td><td>Auth-stack anon key</td></tr>
+            <tr><td>NEXT_PUBLIC_FORT_URL</td><td>yes</td><td>Auth gateway URL (browser-visible)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Feature flags</h3>
+        <table class="docs">
+          <thead><tr><th>Env var</th><th>Default</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td>API_ENABLED</td><td>true</td><td>REST + GraphQL endpoints</td></tr>
+            <tr><td>WS_ENABLED</td><td>true</td><td>WebSocket hub</td></tr>
+            <tr><td>ADK_ENABLED</td><td>true</td><td>AI copilot</td></tr>
+            <tr><td>ADMIN_ENABLED</td><td>true</td><td>Admin panel routes</td></tr>
+            <tr><td>WEBHOOKS_ENABLED</td><td>true</td><td>Inbound <a href="webhooks.html">webhook</a> handler</td></tr>
+            <tr><td>PLUGIN_HOST_ENABLED</td><td>false</td><td>Embedded plugin-host goroutine (in-process)</td></tr>
+            <tr><td>RAG_ENABLED</td><td>false</td><td>RAG knowledge-base client</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Docker</h2>
+        <pre><code><span class="c"># Backend (CGO required for Tesseract/Leptonica OCR)</span>
+docker build -f infra/docker/Dockerfile.backend -t sentra-backend .
+
+<span class="c"># Web dashboard</span>
+docker build -f infra/docker/Dockerfile.web -t sentra-web .</code></pre>
+
+        <h3>Local stack with docker compose</h3>
+        <p>The repository's <code>docker-compose.yml</code> provides the data services; the binary runs migrations and serves:</p>
+        <pre><code>docker compose up -d          <span class="c"># Postgres :5444, NATS :4244</span>
+sentra-hub <span class="k">migrate</span>            <span class="c"># apply db/migrations (idempotent)</span>
+sentra-hub <span class="k">serve</span>              <span class="c"># bridge API on PORT (default 8090)</span>
+
+<span class="c"># or all three in one step:</span>
+sentra-hub <span class="k">start</span></code></pre>
+
+        <h2>Kubernetes</h2>
+        <pre><code>kubectl apply -f infra/k8s/deployment.yaml
+kubectl -n sentra create secret generic sentra-secrets \
+  --from-literal=database_url=&lt;postgres-url&gt; \
+  --from-literal=jwt_secret=&lt;secret&gt; \
+  --from-literal=supabase_service_key=&lt;key&gt; \
+  --from-literal=fort_url=&lt;url&gt; \
+  --from-literal=fort_platform_token=&lt;token&gt; \
+  --from-literal=cortex_http_addr=&lt;url&gt; \
+  --from-literal=cortex_token=&lt;token&gt; \
+  --from-literal=scout_nats_url=&lt;nats-url&gt; \
+  --from-literal=scout_token=&lt;token&gt;</code></pre>
+        <p>Kubernetes manifests live under <code>infra/k8s/</code> in the repository. In production, capability subscribers can run as separate Deployments rather than in-process goroutines (see <a href="capabilities.html">runtime dispatch</a>).</p>
+
+        <h2>Health probe</h2>
+        <div class="endpoint"><span class="method get">GET</span> /health <span>— liveness/readiness probe; no auth</span></div>
+        <pre><code>curl http://localhost:8090/health
+<span class="c"># {"status":"ok","service":"sentra-bridge","db":"connected","version":"0.1.0"}</span></code></pre>
+        <p><code>db: "connected"</code> confirms the database link — wire this endpoint into your container platform's liveness and readiness checks.</p>
+
+        <h2>Migrations</h2>
+        <p>The schema lives in <code>db/migrations/</code> as plain timestamped SQL files (370+), applied by the built-in runner:</p>
+        <pre><code>sentra-hub <span class="k">migrate</span>      <span class="c"># idempotent — skips already-applied files</span></code></pre>
+        <ul>
+          <li>Applied versions are recorded in the database, keyed by each filename's timestamp prefix; re-running is safe.</li>
+          <li>Migrations are <strong>append-only</strong> — schema changes ship as new timestamped files, never edits to applied ones.</li>
+          <li><code>DATABASE_URL</code> (or <code>SENTRA_DB_URL</code>) selects the target database.</li>
+          <li>Run <code>migrate</code> against the database <em>before</em> starting a new binary version.</li>
+        </ul>
+
+        <h2>Production checklist</h2>
+        <div class="callout">
+          <strong>Lock down CORS.</strong> Set <code>CORS_ORIGINS</code> to your exact dashboard origin(s). Never deploy with a wildcard.
+        </div>
+        <div class="callout">
+          <strong>Secrets belong in a secret store.</strong> Database URL, JWT secret, service keys, gateway tokens, and webhook HMAC keys should come from your platform's secret manager (as in the Kubernetes example above), not from image layers or plain env files.
+        </div>
+        <div class="callout">
+          <strong>Disable what you don't use.</strong> The feature flags let you turn off the webhook handler, copilot, or admin routes per environment — a smaller surface is an easier one to defend.
+        </div>
+        <div class="callout">
+          <strong>Migrate, then roll.</strong> Apply migrations before rolling the new binary, and gate the rollout on <code>GET /health</code> returning <code>db: "connected"</code>.
+        </div>
+        <div class="callout warn">
+          <strong>Dev-only settings stay in dev.</strong> <code>APP_ENV=development</code> (dev seeds) and <code>FORT_JWT_SECRET</code> (local token verification that skips the auth gateway) are development conveniences — don't carry them into production.
+        </div>
+
+        <p>Questions about a managed or sovereign deployment? <a href="https://id8media.com/en/contact">Talk to us</a>.</p>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

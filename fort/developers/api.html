@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>REST API reference — Fort</title>
+  <meta name="description" content="Fort's REST API: gateway token verification, every login method, profile, admin, RBAC, branding, settings, platforms, setup and health endpoints.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html" class="active">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>REST API reference</h1>
+        <p class="lead">Every endpoint Fort serves, grouped as in the OpenAPI 3.1 spec (<code>api/openapi.yaml</code> in the repository). Examples use <code>https://fort.example.com</code> — replace with your deployment. Cookie-authenticated mutations require an <code>X-CSRF-Token</code> header; Bearer callers are exempt.</p>
+
+        <h2>Gateway</h2>
+        <p>The seam every downstream product integrates against — no other Fort surface is required to consume Fort-authenticated traffic.</p>
+        <div class="endpoint"><span class="method post">POST</span> /v1/token/verify <span>— verify a Fort bearer token; always 200 with <code>{valid, claims|error}</code></span></div>
+        <div class="endpoint"><span class="method get">GET</span> /.well-known/jwks.json <span>— key metadata (<code>alg</code> + <code>kid</code> only under HS256)</span></div>
+        <pre><code>curl -X <span class="k">POST</span> https://fort.example.com/v1/token/verify \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'</span>
+<span class="c"># {"valid":true,"claims":{"sub":"550e8400-…","role":"authenticated","iat":1749081600,"exp":1749082500}}</span></code></pre>
+
+        <h2>Auth — sign-in &amp; second factors</h2>
+        <p>Public endpoints (no JWT). On success they set the three session cookies — <code>access_token</code> (15 min), <code>refresh_token</code> (7 days), <code>csrf_token</code> — or return a challenge.</p>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/login <span>— email + password; 401 <code>invalid_credentials</code>, 403 <code>method_disabled</code>, 409 <code>account_locked</code> (with <code>retry_after</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/otp/send <span>— 6-digit email OTP; purposes <code>login | enroll-2fa | reset-password | re-verify</code>; 3 sends / 5 min</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/otp/verify <span>— verify OTP; <code>login</code> → session, other purposes → <code>action_token</code></span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/2fa/verify <span>— consume a <code>challenge_token</code> + TOTP code; sets session cookies</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/magic-link <span>— send a magic-link email (always 200; requires <code>providers.magic_link_enabled</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/auth/authorize/{provider} <span>— 302 to the OAuth provider (e.g. <code>google</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/callback <span>— OAuth code exchange; sets session cookies</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/forgot <span>— password-reset email; always 200 (no enumeration); 3 requests / 15 min</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/reset <span>— consume the reset token and set a new password</span></div>
+
+        <h3>Example: password login with an OTP step</h3>
+        <pre><code><span class="c"># 1 — password accepted, but this account requires OTP</span>
+curl -X <span class="k">POST</span> https://fort.example.com/v1/auth/login \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"alice@example.com","password":"••••••••"}'</span>
+<span class="c"># {"status":"challenge","challenge":"otp","challenge_token":"eyJ..."}</span>
+
+<span class="c"># 2 — the code arrives by email; verify it (challenge_token as Bearer)</span>
+curl -c cookies.txt -X <span class="k">POST</span> https://fort.example.com/v1/auth/otp/verify \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -H <span class="s">"Authorization: Bearer $CHALLENGE_TOKEN"</span> \
+  -d <span class="s">'{"email":"alice@example.com","code":"123456","purpose":"login"}'</span>
+<span class="c"># {"status":"ok"}   — session cookies set</span></code></pre>
+
+        <h2>Auth — session lifecycle</h2>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/refresh <span>— rotate the token pair from the <code>refresh_token</code> cookie</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/auth/session <span>— <code>{valid, user}</code> for the current cookie/Bearer session</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/auth/login-methods?email=… <span>— which methods to render for an address (always 200)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/auth/domain-check?email=… <span>— <code>{allowed}</code>: is this email domain allowed to register</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/logout <span>— end the current session, expire cookies</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/logout-everywhere <span>— revoke every refresh token for the user</span></div>
+
+        <h2>Auth — TOTP 2FA management <span style="font-weight:400">(session required)</span></h2>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/2fa/enroll <span>— begin enrollment; returns <code>otpauth_url</code> + <code>base32_secret</code> (shown once); 409 if already enrolled</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/2fa/verify <span>— first verify confirms enrollment and issues recovery codes</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/2fa/recovery <span>— consume one single-use 8-character recovery code</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/2fa/disable <span>— delete verified TOTP factors, clear the requirement</span></div>
+        <pre><code><span class="c"># Enroll (authenticated; cookie flow shown — note the CSRF header)</span>
+curl -b cookies.txt -X <span class="k">POST</span> https://fort.example.com/v1/auth/2fa/enroll \
+  -H <span class="s">"X-CSRF-Token: $CSRF"</span>
+<span class="c"># {"otpauth_url":"otpauth://totp/Fort%3Aalice%40example.com?secret=…&amp;issuer=Fort",</span>
+<span class="c">#  "base32_secret":"JBSWY3DPEHPK3PXP"}   — render as QR, never log</span>
+
+<span class="c"># Confirm with the first code from the authenticator app</span>
+curl -b cookies.txt -X <span class="k">POST</span> https://fort.example.com/v1/auth/2fa/verify \
+  -H <span class="s">"X-CSRF-Token: $CSRF"</span> -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"code":"654321"}'</span>
+<span class="c"># {"status":"ok"}</span></code></pre>
+        <div class="callout">
+          <strong>2FA needs <code>TOTP_ENCRYPTION_KEY</code>.</strong> Enrollment and verification require the TOTP secret-encryption key to be set on the server — see <a href="deployment.html">Self-hosting</a>.
+        </div>
+
+        <h2>Profile <span style="font-weight:400">(session required)</span></h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/profile <span>— full profile: bilingual <code>name_en</code>/<code>name_ar</code>, role, 2FA/PIN state, active sessions, login methods</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/profile <span>— partial update of profile fields</span></div>
+        <div class="endpoint"><span class="method put">PUT</span> /v1/profile/pin <span>— set or change the numeric PIN (used by the lock screen)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/profile/email/re-verify <span>— start a two-step email change</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/profile/email/confirm <span>— confirm the change with OTP/token</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/profile/activity <span>— the user's recent auth activity</span></div>
+
+        <h2>Admin — users <span style="font-weight:400">(admin role required)</span></h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/users <span>— list with <code>search</code>, <code>status</code>, <code>method</code>, <code>limit</code>, <code>offset</code></span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/users/{id} <span>— full user profile</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/users/{id}/login-methods <span>— toggle per-user method flags (password, Google, magic link, OTP/2FA required)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/users/{id}/unlock <span>— clear a lockout</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/users/{id}/force-reset <span>— force a password reset on next login</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/users/{id}/audit-log <span>— per-user audit trail</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/users/{id}/roles <span>— RBAC roles assigned to a user</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/users/{id}/roles <span>— replace a user's RBAC roles</span></div>
+
+        <h2>Admin — RBAC &amp; audit</h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/audit <span>— global audit log; filter by <code>user_id</code>, <code>event</code>, paginate</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/roles <span>— list roles</span> <span class="method post" style="margin-inline-start:8px">POST</span> <span>— create a role</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/roles/{id} <span>— role + permissions</span> <span class="method patch" style="margin-inline-start:8px">PATCH</span> <span>— update</span> <span class="method delete" style="margin-inline-start:8px">DELETE</span> <span>— delete (non-system roles only)</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/roles/{id}/permissions <span>— replace the role's full permission set</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/roles/{id}/permissions/toggle <span>— toggle a single permission</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/permissions <span>— all available permissions</span></div>
+
+        <h2>Branding</h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/branding <span>— <strong>public</strong>; the resolved platform's branding, consumed by the SDK before login</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/branding <span>— partial update; publishes <code>fort.branding.updated</code> to NATS</span></div>
+        <pre><code><span class="c"># Which platform's branding you get is resolved per request —</span>
+<span class="c"># the SDK passes the active platform's slug explicitly:</span>
+curl <span class="s">'https://fort.example.com/v1/branding?platform=acme'</span></code></pre>
+        <p>See <a href="multi-tenancy.html">Platforms &amp; white-label</a> for the resolution contract and the branding fields.</p>
+
+        <h2>Admin — settings &amp; access control</h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/settings <span>— all namespaces, or one via <code>?namespace=</code></span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/settings/{namespace} <span>— merge keys into <code>auth_policy | session | providers | system</code></span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/allowed-users <span>— list</span> <span class="method post" style="margin-inline-start:8px">POST</span> <span>— add an email to the allowlist</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/allowed-users/{id} <span>— update</span> <span class="method delete" style="margin-inline-start:8px">DELETE</span> <span>— remove</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/domains <span>— list domain allowlist</span> <span class="method post" style="margin-inline-start:8px">POST</span> <span>— add a domain</span></div>
+        <div class="endpoint"><span class="method delete">DELETE</span> /v1/admin/domains/{id} <span>— remove a domain</span></div>
+
+        <h2>Admin — platforms</h2>
+        <p>Registers the consuming products ("platforms") this Fort deployment serves. Full contract on the <a href="multi-tenancy.html">Platforms page</a>.</p>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/platforms <span>— list (token hashes never returned)</span> <span class="method post" style="margin-inline-start:8px">POST</span> <span>— create; the API token is returned once</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/platforms/{id} <span>— detail</span> <span class="method patch" style="margin-inline-start:8px">PATCH</span> <span>— update</span> <span class="method delete" style="margin-inline-start:8px">DELETE</span> <span>— delete (blocked for <code>default</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/platforms/{id}/rotate-token <span>— mint a new platform token (returned once)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/me/platforms <span>— platforms visible to the authenticated user (platform-switcher feed)</span></div>
+        <div class="callout">
+          <strong>Deprecated alias.</strong> <code>/v1/admin/integrations</code> (GET/POST, DELETE <code>/{id}</code>) is an older alias for the platforms surface and still appears in the OpenAPI spec — prefer <code>/v1/admin/platforms</code>.
+        </div>
+
+        <h2>Setup</h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/setup/state <span>— first-run state; <code>is_first_run=true</code> until an admin exists</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/setup/admin <span>— create the first admin (self-gating: 403 <code>setup_already_complete</code> afterwards)</span></div>
+
+        <h2>Health</h2>
+        <div class="endpoint"><span class="method get">GET</span> /health <span>— <code>{"status":"ok","service":"fort"}</code>; no auth, safe for probes</span></div>
+
+        <h2>MCP servers</h2>
+        <p>Fort also mounts two Model Context Protocol servers for AI-agent tooling. They call the same internal functions as the REST handlers and verify tokens inline:</p>
+        <div class="endpoint"><span class="method post">POST</span> /mcp/admin <span>— admin-token-gated tool surface</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /mcp/user <span>— any valid token; tools are self-scoped to the caller</span></div>
+        <p>Tool lists and JSON-RPC details are documented in the repository (<code>internal/mcpserver/</code>); they are not part of the OpenAPI spec.</p>
+
+        <h2>Conventions</h2>
+        <div class="callout">
+          <strong>Errors are generic by design.</strong> Failures return <code>{"error":"&lt;code&gt;"}</code> with codes like <code>unauthorized</code>, <code>forbidden</code>, <code>invalid_credentials</code>, <code>method_disabled</code> — never stack traces, SQL, or JWT internals. Enumeration-sensitive endpoints (<code>forgot</code>, <code>otp/send</code>, <code>magic-link</code>, <code>login-methods</code>) return 200 regardless of account existence.
+        </div>
+        <div class="callout">
+          <strong>Rate limits.</strong> OTP send: 3 per 5 minutes per user per purpose. Forgot-password: 3 per 15 minutes per user. Login lockout threshold and duration come from the <code>auth_policy</code> settings namespace; a locked account answers 409 with <code>retry_after</code>.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

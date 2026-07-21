@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sentry-compatible ingest — Motor</title>
+  <meta name="description" content="Point your existing Sentry SDKs at Motor: classic /store/ and modern /envelope/ ingest, structured logs, cron heartbeat monitors, DSN auth, and fingerprint grouping.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html" class="active">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Sentry-compatible ingest</h1>
+        <p class="lead">Motor speaks the Sentry ingest protocol. Every product in your fleet keeps its existing Sentry SDK and swaps only the DSN — errors, logs, and cron heartbeats land in Motor instead of a per-product SaaS account. No code change, no new agent, no vendor lock.</p>
+
+        <h2>The four endpoints</h2>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/store/ <span>— classic Sentry event ingest (JSON event)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/envelope/ <span>— modern Sentry envelope ingest (what current SDKs send)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/logs/ <span>— structured log records, single or array</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/monitors/{name}/checkin <span>— cron/heartbeat check-in</span></div>
+        <p>These routes are public by design and exempt from operator-session auth — they authenticate with the project's DSN public key instead (see below). Events are accepted with a <code>200</code>; <code>/store/</code> returns the event id.</p>
+
+        <h2>DSN auth</h2>
+        <p>Every request carries the DSN public key, exactly as a Sentry SDK sends it:</p>
+        <pre><code>X-Sentry-Auth: Sentry sentry_version=7, sentry_key=&lt;publicKey&gt;
+<span class="c"># also accepted: the Authorization header, or a ?sentry_key=&lt;publicKey&gt; query param</span></code></pre>
+        <p>The key resolves the project via Motor's <code>project_keys</code>; the <code>project_id</code> is taken from the path. A DSN key is submit-only — it can never read data back or touch infra endpoints.</p>
+
+        <h2>DSN format</h2>
+        <p>Build the DSN from your public ingest host — the value of <code>MOTOR_INGEST_URL</code> in your deployment (it must be the externally reachable Motor API host) — plus the project's public key and numeric id:</p>
+        <pre><code>https://<span class="s">&lt;publicKey&gt;</span>@<span class="s">motor.example.com</span>/<span class="s">&lt;project_id&gt;</span></code></pre>
+        <p>Sentry SDKs derive the ingest paths from this DSN themselves (<code>/api/&lt;project_id&gt;/envelope/</code>), which is why swapping the DSN is the entire migration. Motor's dashboard shows ready-made DSNs and connection snippets per project on its Integrations page, driven by <code>MOTOR_INGEST_URL</code>.</p>
+
+        <h2>Example: point a JS Sentry SDK at Motor</h2>
+        <pre><code><span class="k">import</span> * <span class="k">as</span> Sentry <span class="k">from</span> <span class="s">"@sentry/node"</span>;   <span class="c">// or @sentry/browser, sentry-sdk (Python), …</span>
+
+Sentry.init({
+  dsn: <span class="s">"https://&lt;publicKey&gt;@motor.example.com/1"</span>,   <span class="c">// ← the only line that changes</span>
+  environment: <span class="s">"production"</span>,
+  release: <span class="s">"my-service@1.4.2"</span>,
+});
+
+<span class="c">// everything else — captureException, breadcrumbs, contexts — works as before</span>
+Sentry.captureException(<span class="k">new</span> Error(<span class="s">"payment webhook timed out"</span>));</code></pre>
+
+        <h2>Example: raw envelope POST</h2>
+        <p>No SDK at all? The envelope format is newline-delimited JSON — header line, item header, item payload:</p>
+        <pre><code>curl -X <span class="k">POST</span> <span class="s">'https://motor.example.com/api/1/envelope/'</span> \
+  -H <span class="s">'X-Sentry-Auth: Sentry sentry_version=7, sentry_key=&lt;publicKey&gt;'</span> \
+  -H <span class="s">'Content-Type: application/x-sentry-envelope'</span> \
+  --data-binary $<span class="s">'{"event_id":"9ec79c33ec9942ab8353589fcb2e04dc"}\n{"type":"event"}\n{"message":"db connection refused","level":"error","platform":"other","server_name":"worker-2"}'</span>
+<span class="c"># event items are ingested like /store/; non-event items are ignored</span></code></pre>
+
+        <h2>Structured logs</h2>
+        <p><code>/logs/</code> accepts a single record or an array; each record carries a level, message, attributes, and optional trace/span/service fields. Query them back over <code>GET /api/observability/logs</code> or the dashboard's <code>/logs</code> surface with level/service/full-text filters.</p>
+        <pre><code>curl -X <span class="k">POST</span> <span class="s">'https://motor.example.com/api/1/logs/'</span> \
+  -H <span class="s">'X-Sentry-Auth: Sentry sentry_version=7, sentry_key=&lt;publicKey&gt;'</span> \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'[{"level":"error","message":"retry budget exhausted","service":"scheduler",
+       "attributes":{"job":"nightly-dump","attempts":5}}]'</span></code></pre>
+
+        <h2>Cron &amp; heartbeat monitors</h2>
+        <p>Monitors are <strong>auto-provisioned on first check-in</strong> — no setup step. Name the monitor in the URL and report a status of <code>ok</code>, <code>error</code>, or <code>in_progress</code>:</p>
+        <pre><code><span class="c"># at the end of a cron job — one line proves the job ran</span>
+curl -X <span class="k">POST</span> \
+  <span class="s">'https://motor.example.com/api/1/monitors/nightly-backup/checkin?sentry_key=&lt;publicKey&gt;'</span> \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"status":"ok"}'</span></code></pre>
+        <p>Check-ins and status history show on the dashboard's <code>/monitors</code> surface and via <code>GET /api/observability/monitors?project=&lt;id&gt;</code>.</p>
+
+        <h2>How events become issues</h2>
+        <ul>
+          <li><strong>Fingerprint grouping</strong> — each incoming event is fingerprinted server-side; events with the same fingerprint upsert one issue, so a thousand repeats of the same exception stay one row with a rising event count.</li>
+          <li><strong>Server-side titling</strong> — the issue title is derived from the event, so heterogeneous SDKs produce consistent issue lists.</li>
+          <li><strong>Read it back</strong> — issues, events, logs, and monitors are all queryable over the <a href="api.html">observability read endpoints</a> and the <a href="mcp.html">MCP tools</a> (<code>motor_list_issues</code>, <code>motor_get_issue</code>, …).</li>
+        </ul>
+
+        <h2>Best practices</h2>
+        <div class="callout">
+          <strong>One project per product.</strong> Give each service its own project and DSN key. Filtering, grouping, monitors, and key revocation all happen at project granularity.
+        </div>
+        <div class="callout">
+          <strong>Heartbeat everything scheduled.</strong> The check-in endpoint costs one curl line at the end of any cron job — and turns "the nightly job silently stopped three weeks ago" into a visible monitor state.
+        </div>
+        <div class="callout warn">
+          <strong>The DSN key is public, treat it accordingly.</strong> It ships in browser bundles by design and only grants event submission — but anyone holding it can write noise into that project. Rotate a project's key if a DSN leaks somewhere noisy.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="sdks.html">SDKs</a> — motor-obs wraps these endpoints for Go and TypeScript.</li>
+          <li><a href="api.html">REST API</a> — the observability read endpoints.</li>
+          <li><a href="deployment.html">Self-hosting</a> — setting <code>MOTOR_INGEST_URL</code> correctly.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

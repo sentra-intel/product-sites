@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare — Fort</title>
+  <meta name="description" content="How Fort compares to Auth0, Clerk, Keycloak, and Supabase Auth across pricing, self-hosting, data sovereignty, multi-app architecture, and Supabase/GoTrue compatibility.">
+  <link rel="stylesheet" href="./assets/site.css">
+  <script src="./assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="./index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html" class="active">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" style="padding-block: 80px 60px;">
+    <div class="container">
+      <span class="eyebrow">Compare</span>
+      <h1>How Fort <span class="accent">compares</span></h1>
+      <p class="sub">The auth market splits into polished SaaS vendors that hold your users, and heavyweight open source that holds your weekends. Fort takes the third path: a self-hosted, Supabase-compatible auth authority that serves every app you run — with no per-user meter.</p>
+    </div>
+  </section>
+
+  <!-- Positioning -->
+  <section class="section">
+    <div class="container reveal">
+      <h2>Strong tools, different jobs</h2>
+      <p class="lead" style="margin-bottom: 16px;">Each of these platforms is genuinely strong on its home turf. Auth0 is the benchmark for managed enterprise CIAM, with best-in-class docs and federation. Clerk has the finest prebuilt React auth components in the market. Keycloak covers more identity protocols than anyone — full SAML, brokering, LDAP. Supabase Auth is unbeatable value inside a Supabase project.</p>
+      <p class="lead" style="margin-bottom: 0;">What none of them offers is a <strong style="color: var(--foreground);">self-hosted, Supabase-compatible auth authority that serves many apps from one deployment</strong> — issuing tokens in one place, verifying them everywhere over a single seam, on your own infrastructure, at a flat cost. That is the gap Fort was built to fill.</p>
+    </div>
+  </section>
+
+  <!-- Comparison table -->
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head center reveal">
+        <h2>Capability by capability</h2>
+        <p class="lead">Twelve axes that matter when a platform team picks its auth layer.</p>
+      </div>
+      <div class="table-wrap reveal">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th scope="col">Capability</th>
+              <th scope="col" class="us">Fort</th>
+              <th scope="col">Auth0</th>
+              <th scope="col">Clerk</th>
+              <th scope="col">Keycloak</th>
+              <th scope="col">Supabase Auth</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Pricing at 100K+ users</th>
+              <td class="us"><span class="yes">✓</span> Flat — self-hosted, no per-MAU meter</td>
+              <td><span class="no">✗</span> Per-MAU tiers → enterprise contracts</td>
+              <td><span class="part">◐</span> $0.02 per monthly user, forever</td>
+              <td><span class="yes">✓</span> Free, unlimited users</td>
+              <td><span class="part">◐</span> $0.00325/MAU past plan caps</td>
+            </tr>
+            <tr>
+              <th scope="row">Pricing cliffs / forced upgrades</th>
+              <td class="us"><span class="yes">✓</span> Never — growth costs nothing extra</td>
+              <td><span class="no">✗</span> Documented cliffs into opaque contracts</td>
+              <td><span class="part">◐</span> Linear meter; B2B orgs a paid add-on</td>
+              <td><span class="yes">✓</span> Never</td>
+              <td><span class="part">◐</span> Linear meter, no cliffs</td>
+            </tr>
+            <tr>
+              <th scope="row">Self-hosting &amp; deployment ownership</th>
+              <td class="us"><span class="yes">✓</span> Full on-prem / air-gap, single binary</td>
+              <td><span class="no">✗</span> Enterprise-only private cloud, Okta-operated</td>
+              <td><span class="no">✗</span> Cloud-only, no self-host option</td>
+              <td><span class="yes">✓</span> Yes — heavier footprint</td>
+              <td><span class="part">◐</span> Only as the whole Supabase stack</td>
+            </tr>
+            <tr>
+              <th scope="row">Data sovereignty &amp; residency</th>
+              <td class="us"><span class="yes">✓</span> Credentials live in your database</td>
+              <td><span class="no">✗</span> User data in vendor cloud</td>
+              <td><span class="no">✗</span> User data on Clerk's infrastructure</td>
+              <td><span class="yes">✓</span> Your infrastructure</td>
+              <td><span class="no">✗</span> Vendor cloud on managed plans</td>
+            </tr>
+            <tr>
+              <th scope="row">Operational footprint</th>
+              <td class="us"><span class="yes">✓</span> One Go service + Postgres</td>
+              <td><span class="yes">✓</span> None — fully managed</td>
+              <td><span class="yes">✓</span> None — fully managed</td>
+              <td><span class="no">✗</span> JVM cluster, hard HA, breaking upgrades</td>
+              <td><span class="part">◐</span> None managed; full stack if self-hosted</td>
+            </tr>
+            <tr>
+              <th scope="row">Supabase / GoTrue compatibility</th>
+              <td class="us"><span class="yes">✓</span> Drop-in Supabase claims; verifies GoTrue tokens</td>
+              <td><span class="no">✗</span> Different token model</td>
+              <td><span class="no">✗</span> Different token model</td>
+              <td><span class="no">✗</span> Different token model</td>
+              <td><span class="yes">✓</span> It is the reference</td>
+            </tr>
+            <tr>
+              <th scope="row">Multi-app / single auth authority</th>
+              <td class="us"><span class="yes">✓</span> One deployment, many isolated platforms</td>
+              <td><span class="part">◐</span> Per-tenant configuration</td>
+              <td><span class="part">◐</span> Per-frontend instances</td>
+              <td><span class="yes">✓</span> Realms — a solid model</td>
+              <td><span class="no">✗</span> Scoped to one Supabase project</td>
+            </tr>
+            <tr>
+              <th scope="row">Feature paywalls (MFA / RBAC / SSO)</th>
+              <td class="us"><span class="yes">✓</span> TOTP, OTP, magic link, RBAC at every scale</td>
+              <td><span class="no">✗</span> MFA &amp; RBAC gated; SSO $100/mo per connection</td>
+              <td><span class="part">◐</span> Core free; organizations $100/mo add-on</td>
+              <td><span class="yes">✓</span> Everything included</td>
+              <td><span class="part">◐</span> Mixed — some enterprise features gated</td>
+            </tr>
+            <tr>
+              <th scope="row">End-user flow completeness</th>
+              <td class="us"><span class="yes">✓</span> Complete under self-hosting — incl. PIN &amp; lock screens</td>
+              <td><span class="yes">✓</span> Universal Login — very polished</td>
+              <td><span class="yes">✓</span> Best prebuilt UI in the market</td>
+              <td><span class="part">◐</span> Complete but dated out of the box</td>
+              <td><span class="part">◐</span> Primitives; the UI is yours to build</td>
+            </tr>
+            <tr>
+              <th scope="row">Vendor lock-in &amp; exit path</th>
+              <td class="us"><span class="yes">✓</span> Your DB, standard argon2id hashes, standard JWTs</td>
+              <td><span class="no">✗</span> Leaving is a migration project</td>
+              <td><span class="no">✗</span> Export users, rebuild every flow</td>
+              <td><span class="yes">✓</span> Open source, your database</td>
+              <td><span class="part">◐</span> Open-source core, tied to the project</td>
+            </tr>
+            <tr>
+              <th scope="row">Enterprise federation (SAML / brokering)</th>
+              <td class="us"><span class="part">◐</span> OAuth/social via GoTrue seam; SAML not core</td>
+              <td><span class="yes">✓</span> Strong SAML/OIDC federation</td>
+              <td><span class="part">◐</span> Not its focus — frontend-first</td>
+              <td><span class="yes">✓</span> The benchmark — SAML 2.0, brokering, LDAP/AD</td>
+              <td><span class="part">◐</span> SAML-only SSO, no SCIM, no SLO</td>
+            </tr>
+            <tr>
+              <th scope="row">Time to first login / DX</th>
+              <td class="us"><span class="yes">✓</span> Fastest self-hosted path; drop-in for Supabase apps</td>
+              <td><span class="yes">✓</span> Excellent docs and SDKs</td>
+              <td><span class="yes">✓</span> Fastest greenfield React — wins here</td>
+              <td><span class="no">✗</span> Days of realm configuration</td>
+              <td><span class="yes">✓</span> Minutes inside a Supabase project</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="color: var(--muted); font-size: 0.82rem; margin-top: 14px;">Comparison based on publicly available information, 2026. Verify against vendors' current offerings.</p>
+
+      <div class="callout reveal" style="margin-top: 28px;">
+        <strong>Already on Supabase Auth?</strong> Fort is the comparison that matters most. Everything you like about Supabase Auth's model — the same JWT claims, the same <code>auth.users</code> conventions — as a standalone, multi-app, government-grade authority. Your existing apps and row-level-security policies keep working; you change only the issuer and the secret. No Supabase project required.
+      </div>
+    </div>
+  </section>
+
+  <!-- Vs cards -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <h2>Head to head</h2>
+        <p class="lead">When each platform is the right call — and when Fort is.</p>
+      </div>
+      <div class="grid grid-2 reveal-stagger">
+        <div class="card">
+          <h3>Fort vs Auth0</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Auth0</strong> if you want fully managed enterprise CIAM with deep SAML/OIDC federation and are comfortable with vendor-cloud residency and enterprise pricing.</li>
+            <li><strong style="color: var(--foreground);">Choose Fort</strong> when the pricing cliffs stop making sense — Auth0's per-MAU tiers climb from thousands into six figures, and cost is the most commonly cited reason teams migrate off it.</li>
+            <li>Auth0 gates MFA and RBAC behind paid tiers and charges $100/mo per extra enterprise SSO connection; Fort ships TOTP, OTP, magic links, and RBAC at every scale.</li>
+            <li>Auth0's "Private Deployment" is Enterprise-only and still Okta-operated; Fort is a single binary you run on-prem or air-gapped, full stop.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Fort vs Clerk</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Clerk</strong> for a greenfield React or Next.js app where its prebuilt components — genuinely the best in the market — get you to a polished login fastest.</li>
+            <li><strong style="color: var(--foreground);">Choose Fort</strong> when auth must serve many heterogeneous apps, not one frontend — one authority with per-platform branding, settings, and isolation.</li>
+            <li>Clerk is cloud-only: no self-hosting, no on-prem, no air-gap, and your user data lives on Clerk's infrastructure — a non-starter for data-residency and sovereignty requirements Fort was built for.</li>
+            <li>Clerk meters at $0.02 per monthly user with B2B organizations as a $100/mo add-on; leaving means exporting users and rebuilding every flow. Fort is flat-cost, and your users are already in your database.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Fort vs Keycloak</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Keycloak</strong> when you need the full protocol surface — SAML 2.0 federation, identity brokering, LDAP/AD — and you staff a platform team to run it. On federation, Keycloak wins outright.</li>
+            <li><strong style="color: var(--foreground);">Choose Fort</strong> for the same self-hosted ownership without the JVM cluster: one Go service plus Postgres instead of hard HA setup and major upgrades that break custom themes.</li>
+            <li>Keycloak's software is free but published TCO estimates run around $200K over three years in operations time; Fort is built to be operationally boring.</li>
+            <li>Keycloak configures dated end-user flows through an admin console; Fort ships modern login, OTP, TOTP, magic-link, PIN, and lock-screen flows — Supabase-compatible out of the box.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Fort vs Supabase Auth</h3>
+          <ul style="color: var(--muted); font-size: 0.94rem; padding-inline-start: 20px; display: grid; gap: 8px; margin-top: 10px;">
+            <li><strong style="color: var(--foreground);">Choose Supabase Auth</strong> when you're building one product inside a Supabase project — the RLS integration and free tier are unbeatable value there.</li>
+            <li><strong style="color: var(--foreground);">Choose Fort</strong> when auth outgrows the project: Supabase Auth is scoped to a single project with no first-class multi-app or organizations model; Fort serves many platforms from one deployment.</li>
+            <li>Fort issues the same JWT claims and verifies GoTrue tokens, so existing Supabase apps and RLS policies keep working — migration means changing the issuer and secret, not rewriting consumers.</li>
+            <li>Self-hosting Supabase Auth means running the whole Supabase docker stack; Fort is one binary with its own database, plus the enterprise pieces Supabase Auth lacks — full RBAC, audit log, and admin surface.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom line -->
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head center reveal">
+        <h2>The bottom line</h2>
+        <p class="lead">Three things you can only get from Fort in this market.</p>
+      </div>
+      <div class="grid grid-3 reveal-stagger">
+        <div class="card">
+          <div class="icon" aria-hidden="true">⬢</div>
+          <h3>Own your auth</h3>
+          <p>A single Go binary plus Postgres, deployed on-prem or air-gapped. Credentials hashed with argon2id in your database, a full audit trail, and no vendor cloud anywhere in the login path — proven as the auth authority behind an intelligence platform deployed for a national government client.</p>
+        </div>
+        <div class="card">
+          <div class="icon" aria-hidden="true">◈</div>
+          <h3>One authority, many apps</h3>
+          <p>Every product you run delegates login and token verification to one Fort deployment — per-platform branding, settings, and strict isolation, with a single <code>POST /v1/token/verify</code> seam so the signing secret never leaves Fort.</p>
+        </div>
+        <div class="card">
+          <div class="icon" aria-hidden="true">⌘</div>
+          <h3>No growth penalty</h3>
+          <p>No per-MAU meter, no pricing cliffs, no paywalled MFA or RBAC. TOTP, OTP, magic links, roles, and admin tooling are included at every scale — your millionth user costs what your first one did.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="cta-band">
+    <div class="container">
+      <h2>Run the comparison on your own infrastructure</h2>
+      <p style="margin: 14px auto 0; max-width: 620px;">Talk to us about a self-hosted deployment, or start with the SDKs and the token-verify seam.</p>
+      <div style="display: flex; gap: 14px; justify-content: center; margin-top: 32px; flex-wrap: wrap;">
+        <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
+        <a class="btn btn-outline" href="./developers/index.html">Explore the API</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

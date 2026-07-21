@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fort — Self-Hosted Auth &amp; Identity Gateway</title>
+  <meta name="description" content="Fort by ID8 Media — the self-hosted authentication and identity gateway. Supabase-compatible JWTs, 2FA, OTP, RBAC, audit trail and multi-platform white-label — with real TypeScript and Go SDKs.">
+  <link rel="stylesheet" href="./assets/site.css">
+  <script src="./assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="./index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="./index.html" class="active">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <p class="eyebrow">By ID8 Media</p>
+      <h1>One <span class="accent">auth authority</span> for every product you ship</h1>
+      <p class="sub">Fort is a self-hosted, Supabase-compatible authentication gateway — it issues the tokens, your products verify them over one API, and the signing secret never leaves Fort.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
+        <a class="btn btn-outline" href="./developers/index.html">Explore the docs</a>
+      </div>
+      <div class="cta-row" aria-label="Key facts">
+        <span class="pill">Self-hosted</span>
+        <span class="pill">Supabase-compatible</span>
+        <span class="pill">TS + Go SDKs</span>
+        <span class="pill gold">Securing an intelligence platform for a national government client</span>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="browser">
+          <div class="browser-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="addr">fort — admin console</span>
+          </div>
+          <div class="mock">
+            <div class="mock-side">
+              <div class="item on"><span class="sq"></span> Users</div>
+              <div class="item"><span class="sq"></span> Roles</div>
+              <div class="item"><span class="sq"></span> Audit</div>
+              <div class="item"><span class="sq"></span> Branding</div>
+              <div class="item"><span class="sq"></span> Platforms</div>
+              <div class="item"><span class="sq"></span> Settings</div>
+            </div>
+            <div class="mock-main">
+              <div class="mock-stats">
+                <div class="mock-stat"><div class="v">12.8K</div><div class="k">Users</div></div>
+                <div class="mock-stat"><div class="v up">342</div><div class="k">Active sessions</div></div>
+                <div class="mock-stat"><div class="v">6</div><div class="k">Platforms</div></div>
+              </div>
+              <div class="alert-row"><span class="sev low"></span><strong>login.success</strong><div class="meta">just now · password + TOTP · platform: console</div></div>
+              <div class="alert-row"><span class="sev medium"></span><strong>2fa.enroll</strong><div class="meta">3 min ago · TOTP secret encrypted at rest</div></div>
+              <div class="alert-row"><span class="sev high"></span><strong>lock.unlock</strong><div class="meta">9 min ago · idle lock cleared · password + TOTP</div></div>
+              <div class="alert-row"><span class="sev critical"></span><strong>session.revoke_all</strong><div class="meta">14 min ago · admin action · event on NATS</div></div>
+            </div>
+            <div class="mock-feed">
+              <div class="t"><span class="live-dot"></span> Live auth events</div>
+              <div class="alert-row"><span class="sev low"></span><strong>fort.user.created</strong><div class="meta">now · published to NATS</div></div>
+              <div class="alert-row"><span class="sev low"></span><strong>token verified</strong><div class="meta">2s ago · POST /v1/token/verify</div></div>
+              <div class="alert-row"><span class="sev medium"></span><strong>otp.sent</strong><div class="meta">40s ago · email driver</div></div>
+              <div class="alert-row"><span class="sev critical"></span><strong>fort.session.revoked</strong><div class="meta">1 min ago · consumers notified</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="stats">
+        <div class="stat"><div class="num"><span data-count="1">0</span></div><div class="label">Go binary — serve, migrate, seed</div></div>
+        <div class="stat"><div class="num"><span data-count="5">0</span></div><div class="label">SDK packages, TypeScript + Go</div></div>
+        <div class="stat"><div class="num"><span data-count="4" data-suffix="+">0</span></div><div class="label">login methods out of the box</div></div>
+        <div class="stat"><div class="num">∞</div><div class="label">MAU — no per-user pricing</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">The gateway model</p>
+        <h2>Issue tokens in Fort. Verify them everywhere.</h2>
+        <p class="lead">Your products never hold the JWT secret. They send the bearer token to one endpoint — Fort answers with verified claims.</p>
+      </div>
+      <div class="io reveal" aria-label="Gateway flow diagram">
+        <div class="io-box">
+          <h5>Your products</h5>
+          <ul>
+            <li>Web dashboard</li>
+            <li>Mobile app</li>
+            <li>Backend service</li>
+            <li>Partner portal</li>
+          </ul>
+        </div>
+        <div class="io-arrow"></div>
+        <div class="io-box mid">
+          <h5>Fort — the auth authority</h5>
+          <ul>
+            <li><span class="m">POST</span>/v1/token/verify</li>
+            <li>Issues Supabase-compatible JWTs</li>
+            <li>Signing secret never leaves Fort</li>
+            <li>RBAC, audit and platform isolation</li>
+          </ul>
+        </div>
+        <div class="io-arrow a2"></div>
+        <div class="io-box">
+          <h5>Back to your app</h5>
+          <ul>
+            <li>Verified claims — sub, role, platform</li>
+            <li>Invalid token → clean 401</li>
+            <li>Auth events on <code>fort.*</code> NATS</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">One seam, no secret sprawl</p>
+          <h3>Verification is a single HTTP call</h3>
+          <p>Every downstream service — in any language — validates a bearer token with one request. No shared secret in a dozen env files, no key distribution, no re-implemented JWT parsing. Rotate the secret in one place and every consumer keeps working.</p>
+        </div>
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c"># Any product, any language</span>
+<span class="k">POST</span> <span class="s">https://fort.example.com/v1/token/verify</span>
+{ <span class="s">"token"</span>: <span class="s">"eyJhbGciOiJIUzI1NiIs…"</span> }
+
+<span class="c"># Fort answers with verified claims</span>
+{
+  <span class="s">"valid"</span>: true,
+  <span class="s">"claims"</span>: {
+    <span class="s">"sub"</span>: <span class="s">"a1b2c3…"</span>,
+    <span class="s">"role"</span>: <span class="s">"admin"</span>,
+    <span class="s">"platform"</span>: <span class="s">"console"</span>,
+    <span class="s">"exp"</span>: 1789041600
+  }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Inside Fort</p>
+        <h2>Everything auth, already built</h2>
+      </div>
+
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">Every login method included</p>
+          <h3>Password to passwordless, one engine</h3>
+          <p>Passwords hashed with argon2id, email OTP, TOTP 2FA with recovery codes, magic links, OAuth/social SSO via GoTrue, forgot/reset — plus an idle lock screen with PIN or password unlock that never destroys the session. All audited, per platform.</p>
+        </div>
+        <div class="panel">
+          <div class="build-pills" style="margin-top:0">
+            <span class="pill gold">Password (argon2id)</span>
+            <span class="pill">Email OTP</span>
+            <span class="pill">TOTP 2FA</span>
+            <span class="pill">Magic link</span>
+            <span class="pill">OAuth / social SSO</span>
+            <span class="pill">PIN unlock</span>
+            <span class="pill">Lock screen</span>
+            <span class="pill">Forgot / reset</span>
+            <span class="pill">Logout everywhere</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div class="panel">
+          <div class="mock-stats" style="grid-template-columns:repeat(3,1fr)">
+            <div class="mock-stat">
+              <div class="v" style="display:flex;align-items:center;gap:8px;font-size:.92rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--gold-400)"></span> Console</div>
+              <div class="k">password · 2FA · SSO</div>
+            </div>
+            <div class="mock-stat">
+              <div class="v" style="display:flex;align-items:center;gap:8px;font-size:.92rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--ok)"></span> Field app</div>
+              <div class="k">OTP · magic link</div>
+            </div>
+            <div class="mock-stat">
+              <div class="v" style="display:flex;align-items:center;gap:8px;font-size:.92rem"><span style="width:10px;height:10px;border-radius:3px;background:var(--navy-300)"></span> Partners</div>
+              <div class="k">password · allowed users</div>
+            </div>
+          </div>
+          <p style="margin-top:14px;font-size:.8rem;color:var(--muted)">Each platform: own branding · own settings · own allowed users · own API tokens — hard-isolated by <code>platform_id</code>.</p>
+        </div>
+        <div>
+          <p class="kicker">Multi-platform white-label</p>
+          <h3>One deployment, many products</h3>
+          <p>Fort serves any number of consuming apps — "platforms" — from a single deployment. Each gets its own branding, enabled login methods, settings, allowed-user lists and API tokens, with a hardened tenant resolver enforcing isolation on every query.</p>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">Supabase-compatible</p>
+          <h3>Same claims, no Supabase project required</h3>
+          <p>Fort issues HS256 JWTs with Supabase claims and verifies GoTrue ES256 tokens, so an existing Supabase ecosystem keeps working. Migrate off managed Supabase Auth by changing only the issuer and secret — zero consumer-side payload changes.</p>
+        </div>
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c">// Access token claims — 15-min TTL, HS256</span>
+{
+  <span class="s">"sub"</span>: <span class="s">"a1b2c3…"</span>,
+  <span class="s">"role"</span>: <span class="s">"authenticated"</span>,
+  <span class="s">"roles"</span>: [<span class="s">"analyst"</span>],
+  <span class="s">"platform"</span>: <span class="s">"console"</span>,
+  <span class="s">"email"</span>: <span class="s">"user@example.com"</span>,
+  <span class="s">"iat"</span>: 1789040700,
+  <span class="s">"exp"</span>: 1789041600
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="showcase reveal">
+        <div class="panel">
+          <div class="desk">
+            <div class="who">Admin console</div>
+            <ul>
+              <li>Users — search, unlock, force-reset, per-user audit</li>
+              <li>Roles &amp; permissions — full RBAC CRUD</li>
+              <li>Global audit log — every auth event, filterable</li>
+              <li>Branding, settings and login methods per platform</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <p class="kicker">Run it from a dashboard</p>
+          <h3>An admin console your ops team will actually use</h3>
+          <p>Fort ships a full admin dashboard: user management, RBAC, the global audit trail, per-platform branding and settings, allowed users, domain allowlists and integrations — no SQL, no support tickets.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Why teams pick Fort</p>
+        <h2>Stop re-implementing auth per product</h2>
+      </div>
+      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
+        <div class="tile"><span class="glyph">🔑</span><div><h4>No secret sprawl</h4><p>Downstream services verify over HTTP — the JWT signing secret never leaves Fort.</p></div></div>
+        <div class="tile"><span class="glyph">♾️</span><div><h4>No per-MAU pricing</h4><p>Self-hosted on your infrastructure. Your user count is your business, not your bill.</p></div></div>
+        <div class="tile"><span class="glyph">🛡</span><div><h4>Own your compliance story</h4><p>argon2id, full audit trail, RBAC, session lock and no user enumeration — on your servers.</p></div></div>
+        <div class="tile"><span class="glyph">🎨</span><div><h4>White-label fast</h4><p>Per-platform branding, settings and login methods from one deployment — new tenant, no new stack.</p></div></div>
+        <div class="tile"><span class="glyph">🔁</span><div><h4>Leave Supabase without rewrites</h4><p>Same claims, compatible schema. Change the issuer and secret; consumers don't notice.</p></div></div>
+        <div class="tile"><span class="glyph">📦</span><div><h4>Single binary ops</h4><p>One Go binary — serve, migrate, reset, seed. <code>make start</code> brings up DB, NATS and the server.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">The difference</p>
+        <h2>Auth per product vs. one Fort</h2>
+      </div>
+      <div class="ba reveal" style="margin-top:36px">
+        <div class="col before">
+          <h4>Auth per product</h4>
+          <ul>
+            <li>Every product re-implements login, reset and 2FA</li>
+            <li>The JWT secret is copied into every service's env</li>
+            <li>Branding and login rules hardcoded app by app</li>
+            <li>Audit trails scattered — or missing entirely</li>
+          </ul>
+        </div>
+        <div class="col after">
+          <h4>One Fort</h4>
+          <ul>
+            <li>One hardened engine — every product just consumes it</li>
+            <li>Verification over HTTP; the secret stays in Fort</li>
+            <li>Per-platform branding, methods and users from one place</li>
+            <li>Every auth event in one audit log, with RBAC on top</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Built for regulated buyers</p>
+        <h2>Security is the product</h2>
+        <p class="lead" style="margin-inline:auto">The same gateway that secures an intelligence platform for a national government client.</p>
+      </div>
+      <div class="sec-badges reveal">
+        <span class="pill gold">argon2id password hashing</span>
+        <span class="pill">TOTP 2FA + recovery codes</span>
+        <span class="pill">Full audit trail</span>
+        <span class="pill">RBAC — roles &amp; permissions</span>
+        <span class="pill">Session lock + PIN</span>
+        <span class="pill">No user enumeration</span>
+        <span class="pill">Bilingual EN/AR + RTL</span>
+        <span class="pill">Self-hosted — your infrastructure</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <div class="showcase reveal">
+        <div>
+          <p class="kicker">For developers</p>
+          <h3>Ship it with real SDKs</h3>
+          <p>Fort's SDKs are the same ones its own platform products run on: <code>@sentra/fort-auth-sdk</code> (TypeScript + Go) with middleware, role guards and ready-made auth &amp; lock-screen widgets — plus admin, billing and storage SDK families, and a TypeScript umbrella package.</p>
+          <p style="margin-top:14px"><a class="btn btn-outline" href="./developers/index.html">Open the developer portal</a></p>
+        </div>
+        <div class="panel">
+          <pre style="margin:0"><code><span class="c">// Go — protect a route with Fort</span>
+cfg := fort.Config{BaseURL: <span class="s">"https://fort.example.com"</span>}
+
+mux.Handle(<span class="s">"/admin"</span>,
+  fort.<span class="k">Middleware</span>(cfg)(
+    fort.<span class="k">RequireRole</span>(<span class="s">"admin"</span>)(adminHandler)))
+
+claims, _ := fort.<span class="k">ClaimsFromContext</span>(r.Context())</code></pre>
+        </div>
+      </div>
+      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
+        <div class="tile"><span class="glyph">🔐</span><div><h4>fort-auth-sdk</h4><p>AuthClient, React auth flow and lock-screen widgets, Go middleware and token verification. TS + Go.</p></div></div>
+        <div class="tile"><span class="glyph">🧰</span><div><h4>fort-admin-sdk</h4><p>Users, roles, settings and feature-flag clients plus admin UI widgets. TS + Go.</p></div></div>
+        <div class="tile"><span class="glyph">🧾</span><div><h4>fort-billing-sdk</h4><p>Usage metering, invoices, price-books and customers — billing any product can consume. TS + Go.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-block:56px">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">One gateway, the whole surface</p>
+        <h2>From login to audit log</h2>
+      </div>
+    </div>
+    <div class="ticker-wrap" style="margin-top:28px" aria-hidden="true">
+      <div class="ticker">
+        <span class="pill">login</span><span class="pill">OTP</span><span class="pill">TOTP 2FA</span><span class="pill">magic link</span><span class="pill">OAuth SSO</span><span class="pill">sessions</span><span class="pill">lock screen</span><span class="pill">PIN</span><span class="pill">profiles</span><span class="pill">RBAC</span><span class="pill">audit log</span><span class="pill">branding</span><span class="pill">platforms</span><span class="pill">allowed users</span><span class="pill">domains</span><span class="pill">billing</span><span class="pill">storage</span><span class="pill">MCP</span><span class="pill">NATS events</span>
+        <span class="pill">login</span><span class="pill">OTP</span><span class="pill">TOTP 2FA</span><span class="pill">magic link</span><span class="pill">OAuth SSO</span><span class="pill">sessions</span><span class="pill">lock screen</span><span class="pill">PIN</span><span class="pill">profiles</span><span class="pill">RBAC</span><span class="pill">audit log</span><span class="pill">branding</span><span class="pill">platforms</span><span class="pill">allowed users</span><span class="pill">domains</span><span class="pill">billing</span><span class="pill">storage</span><span class="pill">MCP</span><span class="pill">NATS events</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="container">
+      <h2>Make Fort your auth authority</h2>
+      <p style="margin:12px 0 28px">A live demo takes 30 minutes. The deployment is yours — on your infrastructure, with your users, under your control.</p>
+      <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="./index.html">Product</a>
+        <a href="./compare.html">Compare</a>
+        <a href="./developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

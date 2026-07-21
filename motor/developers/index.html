@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Portal — Motor</title>
+  <meta name="description" content="Build on Motor: a Sentry-compatible observability ingest, an infra-control REST API, an MCP server with 33 tools for AI agents, and real SDKs for logs, errors, and feedback.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html" class="active">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Motor for developers</h1>
+        <p class="lead">Motor is a self-hosted operator control plane: one authenticated API that inspects and acts on the infrastructure your platform runs on, and one observability hub that receives errors, logs, and heartbeats from every product in your fleet. Everything the dashboard shows — and every action it takes — is available to you over the same surfaces.</p>
+
+        <h2>How the pieces connect</h2>
+        <p>Your services report in over Sentry-compatible ingest; Motor stores, groups, and monitors; operators, agents, and automations read and act back out:</p>
+        <div class="io">
+          <div class="io-box">
+            <h5>Into Motor</h5>
+            <ul>
+              <li><span class="m">SDK</span>Existing Sentry SDKs — errors via <code>/store/</code> &amp; <code>/envelope/</code></li>
+              <li><span class="m">POST</span>Structured logs &amp; cron heartbeats (DSN-authed)</li>
+              <li><span class="m">JS</span>Human bug reports via the Feedback widget</li>
+            </ul>
+          </div>
+          <div class="io-arrow"></div>
+          <div class="io-box mid">
+            <h5>Motor ingests &amp; controls</h5>
+            <ul>
+              <li>Events grouped into issues by fingerprint; monitors auto-provisioned</li>
+              <li>Live infra state: Cloudflare, Proxmox, Docker, GitHub CI, GCP, Coder, NATS</li>
+              <li>Actions run as the operator's own CLI session — no stored cloud tokens</li>
+            </ul>
+          </div>
+          <div class="io-arrow a2"></div>
+          <div class="io-box">
+            <h5>Out of Motor</h5>
+            <ul>
+              <li><span class="m">WEB</span>The operator dashboard — errors, logs, monitors, infra</li>
+              <li><span class="m">MCP</span>AI agents driving 33 tools with role gates</li>
+              <li><span class="m">REST</span>Your automations, alerts &amp; embedded panels</li>
+            </ul>
+          </div>
+        </div>
+
+        <h2>What you can build</h2>
+        <div class="grid grid-2" style="margin-block:18px">
+          <div class="tile"><span class="glyph">🛰️</span><div><h4>Fleet error tracking — no code change</h4><p>Point the Sentry SDKs you already run at Motor's <a href="ingest.html">Sentry-compatible ingest</a>. Swap the DSN, keep the SDK: events group into issues by fingerprint, logs are searchable, cron monitors auto-provision on first check-in.</p></div></div>
+          <div class="tile"><span class="glyph">🤖</span><div><h4>AI agents that operate infra</h4><p>Connect any MCP client to <a href="mcp.html">Motor's MCP server</a> and an agent can triage errors, inspect JetStream, dispatch CI, or restart a container — through the same role gates as a human operator.</p></div></div>
+          <div class="tile"><span class="glyph">⚙️</span><div><h4>Custom automations on the REST API</h4><p>Every dashboard surface is a <a href="api.html">REST endpoint</a>: script incident runbooks, feed status boards, wire alert routing — with a Fort JWT and plain HTTP.</p></div></div>
+          <div class="tile"><span class="glyph">🧩</span><div><h4>Embedded feedback &amp; logs panels</h4><p>Drop the <a href="sdks.html">motor-feedback widget</a> into any web app for in-page bug reports, and embed Motor's logs/errors/feedback panels in your own admin with <code>@sentra/motor-admin</code>.</p></div></div>
+        </div>
+
+        <h2>One binary, every surface</h2>
+        <p>Motor ships as a single Go binary that serves the REST API, the Sentry-compatible ingest, and the MCP server from the same process:</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/* <span>— infra control + observability reads (<a href="api.html">REST API</a>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/{project_id}/envelope/ <span>— DSN-authed Sentry-compatible ingest (<a href="ingest.html">Ingest</a>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /mcp/admin · /mcp/user <span>— Streamable-HTTP MCP, Fort-gated (<a href="mcp.html">MCP</a>)</span></div>
+        <div class="callout">
+          <strong>Base URLs.</strong> Local development: <code>http://localhost:8215</code> · Production: your own deployment host (Motor is self-hosted) — examples across this portal use <code>https://motor.example.com</code>. Authenticated requests carry a Fort JWT — see <a href="authentication.html">Auth &amp; roles</a>.
+        </div>
+
+        <h2>5-minute quickstart</h2>
+        <h3>1. Run Motor</h3>
+        <p>From a clone of the repository, with Docker and Go installed:</p>
+        <pre><code><span class="c"># Bring up Postgres (:5447) + NATS JetStream (:4247), then serve the API on :8215</span>
+make start
+
+<span class="c"># — or step by step —</span>
+docker compose up -d          <span class="c"># motor-db (ParadeDB pg17) + motor-nats</span>
+go run . <span class="k">migrate</span>              <span class="c"># apply Atlas migrations (idempotent)</span>
+go run . <span class="k">seed</span>                 <span class="c"># plugins + fixtures</span>
+go run . <span class="k">serve</span>                <span class="c"># HTTP API on :8215</span></code></pre>
+        <p>Confirm it is up — no auth required:</p>
+        <pre><code>curl http://localhost:8215/healthz
+<span class="c"># {"status":"ok","service":"motor","version":"0.1.0","uptime":"2m30s"}</span></code></pre>
+
+        <h3>2. Point a Sentry SDK at Motor</h3>
+        <p>Take any service already instrumented with a Sentry SDK and swap only the DSN — the host is your Motor ingest URL, the path is the Motor project id:</p>
+        <pre><code>Sentry.init({
+  dsn: <span class="s">"https://&lt;publicKey&gt;@motor.example.com/1"</span>,  <span class="c">// was: …@o0.ingest.sentry.io/…</span>
+});</code></pre>
+
+        <h3>3. Throw an error, see the issue</h3>
+        <p>Trigger any exception in that service, then watch it appear — grouped by fingerprint — on the dashboard's <code>/errors</code> surface, or read it back over the API:</p>
+        <pre><code>curl -H <span class="s">'Authorization: Bearer &lt;fort-jwt&gt;'</span> \
+  https://motor.example.com/api/observability/projects/1/issues?status=unresolved</code></pre>
+        <p>That is the whole integration: no agent to install, no SDK to replace, no vendor account.</p>
+
+        <h2>Architecture at a glance</h2>
+        <pre><code><span class="c">Your services            Sentry SDKs · motor-obs · Feedback widget</span>
+      │
+      ▼
+ Ingest (DSN-authed)     <span class="c">POST /api/{project}/store/ · /envelope/ · /logs/ · /monitors/…/checkin</span>
+      │
+      ▼
+ Motor core (Go :8215)   <span class="c">own Postgres (:5447) + NATS JetStream (:4247) — standalone by design</span>
+      │
+      ├─ REST /api/*      <span class="c">observability reads + infra control (Fort JWT / Coder session)</span>
+      ├─ MCP /mcp/*       <span class="c">33 motor_* tools, Streamable-HTTP, role-gated</span>
+      └─ Web (:3215)      <span class="c">the DB-driven operator dashboard</span></code></pre>
+        <ul>
+          <li><strong>Single binary</strong> — <code>motor serve</code> hosts the REST API, the ingest, and both MCP endpoints in one process.</li>
+          <li><strong>CLI delegation</strong> — GitHub and GCP calls shell out to the operator's own <code>gh</code> / <code>gcloud</code> session per request. No long-lived cloud tokens are stored anywhere.</li>
+          <li><strong>Standalone</strong> — Motor owns its database and its NATS. Cross-product data arrives only over public seams like the ingest endpoints.</li>
+        </ul>
+
+        <h2>Best practices</h2>
+        <div class="callout">
+          <strong>Keep DSNs and Fort JWTs apart.</strong> A DSN public key only lets a client <em>submit</em> events to one project — it can never read data or act on infra. Reads and actions always require a Fort JWT (or Coder session). Don't try to make one credential do both jobs.
+        </div>
+        <div class="callout">
+          <strong>Expect 503 for unconfigured integrations.</strong> A surface whose credentials aren't set returns <code>503</code> with an error naming the missing env var — not a 404, not a crash. Treat 503 as "not configured here", and handle it gracefully in your clients too.
+        </div>
+        <div class="callout">
+          <strong>Confirm before destructive calls.</strong> Motor is read-mostly. Endpoints that stop containers, purge streams or caches, or dispatch CI are the exception — the dashboard puts an explicit confirm in front of every one, and your automations should do the equivalent (dry-run flags, approval steps).
+        </div>
+        <div class="callout warn">
+          <strong>Give agents the least role that works.</strong> <code>/mcp/user</code> exposes only the 23 read tools and accepts any valid Fort token. Reserve <code>/mcp/admin</code> — and its 10 mutating tools — for agents that genuinely need to act.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="authentication.html">Auth &amp; roles</a> — Fort JWT, Coder sessions, role gates, DSN auth.</li>
+          <li><a href="api.html">REST API</a> — every endpoint, grouped by surface.</li>
+          <li><a href="ingest.html">Sentry-compatible ingest</a> — DSNs, envelopes, logs, cron monitors.</li>
+          <li><a href="mcp.html">MCP server &amp; tools</a> — the full 33-tool catalog and client setup.</li>
+          <li><a href="sdks.html">SDKs</a> — motor-obs, motor-feedback, motor-admin.</li>
+          <li><a href="deployment.html">Self-hosting &amp; integrations</a> — binary, ports, env vars, checklist.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

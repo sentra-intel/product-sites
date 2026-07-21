@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GraphQL API — Sentra</title>
+  <meta name="description" content="The Sentra GraphQL API: endpoint, authentication, schema overview, example queries for intelligence feeds and briefings, and pagination conventions.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html" class="active">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>GraphQL API</h1>
+        <p class="lead">GraphQL is Sentra's primary read API — the same API the dashboard uses. Page-level queries return everything a screen needs in one round-trip: intelligence feeds, briefings, session data, and capability configuration.</p>
+
+        <h2>Endpoint and authentication</h2>
+        <div class="endpoint"><span class="method post">POST</span> /api/v1/graphql</div>
+        <p>Requests are standard GraphQL-over-HTTP JSON bodies — <code>{"query": "...", "variables": {...}, "operationName": "..."}</code>. Authenticate exactly like any other endpoint: <code>Authorization: Bearer &lt;jwt&gt;</code> or the <code>access_token</code> cookie from sign-in (see <a href="authentication.html">Authentication</a>). All queries require authentication.</p>
+        <p>Errors come back in the response body's <code>errors</code> array with HTTP 200 — check for it before reading <code>data</code>.</p>
+        <pre><code>curl -b cookies.txt -X <span class="k">POST</span> https://sentra.example.com/api/v1/graphql \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"query":"{ sessionPage { session { email role } } }"}'</span></code></pre>
+
+        <h2>Schema overview</h2>
+        <p>The query surface is organised around <strong>page queries</strong> — one query per screen — plus intelligence bundles and CRM-style lists:</p>
+        <table class="docs">
+          <thead><tr><th>Query</th><th>What it returns</th></tr></thead>
+          <tbody>
+            <tr><td>sessionPage</td><td>Per-session globals, fired once per session: session, branding, capability nav, admin settings, lenses, and a fresh <code>wsTicket</code>.</td></tr>
+            <tr><td>dashboardPage(scopeSlug, limit)</td><td>Full dashboard payload for a scope: session, capability nav, intelligence (narratives/alerts/events/entities), unified <code>feedData</code>, and the user's <code>interestProfile</code>.</td></tr>
+            <tr><td>multiScopeIntelligence(scopeSlugs, limit)</td><td>Intelligence bundle (narratives, alerts, events, entities, snapshot, briefing) per requested scope.</td></tr>
+            <tr><td>criticalScopeBadges(scopeSlugs, sinceIso)</td><td>Count of active critical/high-urgency narratives per scope since a timestamp (clamped to a 24 h lookback).</td></tr>
+            <tr><td>briefingPage(scopeSlug)</td><td>Scope briefing payload — brief text plus attached alerts and entities.</td></tr>
+            <tr><td>personalBriefingPage</td><td>The calling user's personal briefing.</td></tr>
+            <tr><td>briefingsListPage(limit, offset)</td><td>Paginated unified briefings list (personal + scope rows).</td></tr>
+            <tr><td>capabilityPage(slug)</td><td>DB-driven config for one capability page: feature flags, layout, prompts. Null when the slug is unknown.</td></tr>
+            <tr><td>superAdminPage</td><td>Superadmin panel bootstrap payload. Requires <code>isSuperAdmin</code>.</td></tr>
+            <tr><td>clients / clientPage / clientConfig</td><td>CRM-style client registry: paginated list, full client detail in one round-trip, and the create-client wizard config.</td></tr>
+            <tr><td>researches / researchPage / researchConfig</td><td>Research Center: paginated research list, full workspace detail, and the deliverable-type registry.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>Read-only by design.</strong> The GraphQL schema exposes queries only — writes go through the <a href="rest-api.html">REST API</a> (for example, research writes go via <code>/api/research</code> per the schema docs).
+        </div>
+
+        <h2>Example: alerts and narratives feed for a scope</h2>
+        <pre><code><span class="k">query</span> Dashboard(<span class="s">$scope</span>: String!) {
+  dashboardPage(scopeSlug: <span class="s">$scope</span>, limit: 10) {
+    intelligence {
+      alerts    { id slug severity titleEn titleAr createdAt }
+      narratives { id slug urgency status titleEn titleAr createdAt }
+    }
+  }
+}
+<span class="c">// variables: { "scope": "&lt;scope-slug&gt;" }</span></code></pre>
+        <pre><code>{
+  <span class="s">"data"</span>: {
+    <span class="s">"dashboardPage"</span>: {
+      <span class="s">"intelligence"</span>: {
+        <span class="s">"alerts"</span>: [
+          { <span class="s">"id"</span>: <span class="s">"…"</span>, <span class="s">"slug"</span>: <span class="s">"…"</span>, <span class="s">"severity"</span>: <span class="s">"high"</span>,
+            <span class="s">"titleEn"</span>: <span class="s">"…"</span>, <span class="s">"titleAr"</span>: <span class="s">"…"</span>, <span class="s">"createdAt"</span>: <span class="s">"2026-07-19T06:02:11Z"</span> }
+        ],
+        <span class="s">"narratives"</span>: [
+          { <span class="s">"id"</span>: <span class="s">"…"</span>, <span class="s">"slug"</span>: <span class="s">"…"</span>, <span class="s">"urgency"</span>: <span class="s">"critical"</span>, <span class="s">"status"</span>: <span class="s">"active"</span>,
+            <span class="s">"titleEn"</span>: <span class="s">"…"</span>, <span class="s">"titleAr"</span>: <span class="s">"…"</span>, <span class="s">"createdAt"</span>: <span class="s">"…"</span> }
+        ]
+      }
+    }
+  }
+}</code></pre>
+
+        <h2>Example: multi-scope intelligence with snapshots</h2>
+        <pre><code><span class="k">query</span> MultiScope(<span class="s">$slugs</span>: [String!]!) {
+  multiScopeIntelligence(scopeSlugs: <span class="s">$slugs</span>, limit: 5) {
+    scopeSlug
+    alerts   { id severity titleEn }
+    events   { id eventType titleEn occurredAt locationEn significance }
+    entities { id nameEn nameAr type country sentiment }
+    snapshotJson   <span class="c"># raw snapshot JSONB serialised as a JSON string</span>
+    briefingJson   <span class="c"># latest briefing row, serialised as a JSON string</span>
+  }
+}</code></pre>
+        <p>Fields ending in <code>Json</code> (and the <code>JSON</code> scalar fields such as <code>feedData</code>) return serialised JSON — parse them client-side.</p>
+
+        <h2>Example: entity data</h2>
+        <p>Entities arrive inside the intelligence bundles, with bilingual names, type, country, and sentiment:</p>
+        <pre><code><span class="k">query</span> {
+  dashboardPage(scopeSlug: <span class="s">"&lt;scope-slug&gt;"</span>) {
+    intelligence {
+      entities { id slug nameEn nameAr type country role sentiment imageUrl projectIds }
+    }
+  }
+}</code></pre>
+
+        <h2>Example: briefings list with pagination</h2>
+        <pre><code><span class="k">query</span> {
+  briefingsListPage(limit: 20, offset: 0) {
+    <span class="c"># unified personal + scope briefing rows;</span>
+    <span class="c"># limit defaults to 20, max 100</span>
+  }
+}</code></pre>
+
+        <h2>Conventions</h2>
+        <ul>
+          <li><strong>Pagination</strong> — list queries take <code>limit</code> and <code>offset</code> arguments. Defaults and caps are documented per query in the SDL (e.g. <code>briefingsListPage</code>: default 20, max 100; <code>clients</code>: default 100, max 500).</li>
+          <li><strong>Filtering</strong> — list queries accept a <code>filter</code> search string (matched against resolved names) and, where relevant, status-style args such as <code>researches(subjectType, status)</code>. Scope-based queries take <code>scopeSlug</code> / <code>scopeSlugs</code>.</li>
+          <li><strong>Bilingual fields</strong> — user-facing text comes in pairs: <code>titleEn</code>/<code>titleAr</code>, <code>nameEn</code>/<code>nameAr</code>, <code>descriptionEn</code>/<code>descriptionAr</code>. The Arabic member may be null; fall back to English.</li>
+          <li><strong>Timestamps</strong> — returned as strings (e.g. <code>createdAt</code>); time-window args take ISO strings (<code>sinceIso</code>).</li>
+        </ul>
+
+        <h2>Where the schema lives</h2>
+        <p>The full SDL is exported to <code>api/schema.graphql</code> in the repository and is the authoritative, documented contract — every query above carries a doc comment there. Pair GraphQL reads with the <a href="websocket.html">WebSocket stream</a> to refetch only when data actually changes.</p>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

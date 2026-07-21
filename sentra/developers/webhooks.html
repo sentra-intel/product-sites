@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Webhooks — Sentra</title>
+  <meta name="description" content="Push content into Sentra's enrichment pipeline: the HMAC-signed inbound webhook endpoint, signature format, envelope shape, and retry guidance.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html" class="active">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Inbound webhooks</h1>
+        <p class="lead">External sources push content into Sentra's enrichment pipeline through a signed inbound endpoint. Requests are authenticated per plugin with HMAC-SHA256 — no JWT involved — and every accepted envelope flows into the same capability pipeline as any other source.</p>
+
+        <div class="callout">
+          <strong>Feature gate.</strong> Inbound webhook handling is controlled by the <code>WEBHOOKS_ENABLED</code> environment flag (default <code>true</code>). See <a href="deployment.html">Deployment</a> for the full flag table.
+        </div>
+
+        <h2>The endpoint</h2>
+        <div class="endpoint"><span class="method post">POST</span> /pipeline/ingest <span>— HMAC-authenticated envelope ingest</span></div>
+        <p>Two headers are required on every request:</p>
+        <table class="docs">
+          <thead><tr><th>Header</th><th>Content</th></tr></thead>
+          <tbody>
+            <tr><td>X-Sentra-Plugin</td><td>The plugin ID whose secret key signed the request.</td></tr>
+            <tr><td>X-Sentra-Signature</td><td>The signature triple: <code>t=&lt;unix-seconds&gt;,n=&lt;nonce&gt;,s=&lt;hex-hmac&gt;</code></td></tr>
+          </tbody>
+        </table>
+        <p>Responses:</p>
+        <table class="docs">
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>202</td><td>Envelope accepted and forwarded to the pipeline.</td></tr>
+            <tr><td>401</td><td>Invalid HMAC signature. Deliberately generic — the response never reveals which check failed (missing header, malformed signature, timestamp skew, unknown plugin, or bad MAC).</td></tr>
+            <tr><td>409</td><td>Replay detected — the nonce was already used.</td></tr>
+            <tr><td>503</td><td>Ingest publisher unavailable (degraded mode); safe to retry later.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Signing scheme</h2>
+        <p>The signature is <strong>HMAC-SHA256</strong> (the only accepted algorithm) over the canonical string:</p>
+        <pre><code>&lt;timestamp&gt;.&lt;nonce&gt;.&lt;raw-request-body-bytes&gt;</code></pre>
+        <p>keyed with the per-plugin secret, hex-encoded lowercase. Rules enforced by the verifier:</p>
+        <ul>
+          <li><strong>Timestamp window</strong> — <code>t</code> is Unix seconds; requests with |now − t| &gt; <strong>300 s</strong> are rejected.</li>
+          <li><strong>Nonce</strong> — an opaque value up to 128 characters, unique per request. Reuse returns <code>409</code>.</li>
+          <li><strong>Exact bytes</strong> — the MAC is computed over the exact body bytes sent. Sign the serialised body you transmit; do not re-serialise afterwards.</li>
+          <li><strong>Strict header format</strong> — exactly the keys <code>t</code>, <code>n</code>, <code>s</code>; duplicates or unknown keys are rejected. Signature comparison is constant-time.</li>
+        </ul>
+
+        <h3>Signature example (bash + openssl)</h3>
+        <pre><code>BODY=<span class="s">'{"envelope_id":"7f2c…","source_id":"my-plugin","region":"mena","content_en":"…","ingested_at":"2026-07-19T09:00:00Z","content_hash":"…"}'</span>
+T=$(date +%s)
+N=$(openssl rand -hex 16)
+S=$(printf <span class="s">'%s.%s.%s'</span> <span class="s">"$T"</span> <span class="s">"$N"</span> <span class="s">"$BODY"</span> \
+    | openssl dgst -sha256 -hmac <span class="s">"$PLUGIN_SECRET"</span> -hex | awk <span class="s">'{print $NF}'</span>)
+
+curl -X <span class="k">POST</span> https://sentra.example.com/pipeline/ingest \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -H <span class="s">"X-Sentra-Plugin: my-plugin"</span> \
+  -H <span class="s">"X-Sentra-Signature: t=$T,n=$N,s=$S"</span> \
+  -d <span class="s">"$BODY"</span>
+<span class="c"># 202 Accepted</span></code></pre>
+
+        <h3>Verification, mirrored in Node.js</h3>
+        <pre><code><span class="k">import</span> { createHmac, timingSafeEqual } <span class="k">from</span> <span class="s">"node:crypto"</span>;
+
+<span class="k">function</span> <span class="k">sign</span>(t, nonce, body, key) {
+  <span class="k">return</span> createHmac(<span class="s">"sha256"</span>, key)
+    .update(<span class="s">`${t}.${nonce}.`</span>).update(body)   <span class="c">// "&lt;t&gt;.&lt;n&gt;.&lt;body&gt;"</span>
+    .digest(<span class="s">"hex"</span>);
+}
+
+<span class="c">// Producing a header:</span>
+<span class="k">const</span> t = Math.floor(Date.now() / 1000);
+<span class="k">const</span> nonce = crypto.randomUUID().replace(/-/g, <span class="s">""</span>);
+<span class="k">const</span> header = <span class="s">`t=${t},n=${nonce},s=${sign(t, nonce, bodyBytes, secret)}`</span>;</code></pre>
+
+        <h2>Payload: the envelope</h2>
+        <p>The body must be a valid Sentra <strong>envelope</strong> — the platform's content unit (contract: <code>pkg/contracts/envelope</code> in the repository). Core fields:</p>
+        <table class="docs">
+          <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>envelope_id</td><td>Unique ID for this envelope.</td></tr>
+            <tr><td>source_id</td><td>Originating source. The server overwrites the source binding with the <em>authenticated</em> plugin ID — a plugin can never impersonate another source.</td></tr>
+            <tr><td>region</td><td>Region tag for the content.</td></tr>
+            <tr><td>url</td><td>Canonical URL of the item (optional).</td></tr>
+            <tr><td>content_en / content_ar</td><td>Content text — English and/or Arabic; <code>lang</code> declares the source language.</td></tr>
+            <tr><td>published_at / ingested_at</td><td>Timestamps (RFC 3339). <code>ingested_at</code> is required.</td></tr>
+            <tr><td>content_hash</td><td>Hash of the content, used for dedup.</td></tr>
+            <tr><td>capabilities</td><td>Bitmask selecting which capabilities should process this envelope (see <a href="capabilities.html">Capability SDK</a> for the bit assignments).</td></tr>
+            <tr><td>scope_id / tenant_id</td><td>Optional routing to a scope / tenant.</td></tr>
+            <tr><td>raw_payload / metadata</td><td>Original source payload and source metadata (title, description, author, media URLs, …), preserved for provenance.</td></tr>
+          </tbody>
+        </table>
+        <p>A malformed envelope that passes signature verification is rejected with <code>400 bad_envelope</code>. Enriched-side fields (sentiment, topics, entities, dedup hash) are filled by the pipeline — you don't need to send them.</p>
+
+        <h2>Retries and idempotency</h2>
+        <div class="callout">
+          <strong>Fresh signature per attempt.</strong> Nonces are single-use and timestamps expire after 5 minutes — never replay a previous request verbatim. On retry, generate a new nonce and timestamp and re-sign the same body.
+        </div>
+        <div class="callout">
+          <strong>Retry on 503, not on 401/409.</strong> <code>503</code> means the ingest publisher is temporarily unavailable — back off and retry. <code>401</code> is a credential/signature problem, and <code>409</code> means that exact nonce was already accepted; retrying either without fixing the cause only burns requests.
+        </div>
+        <div class="callout">
+          <strong>Deduplication.</strong> Envelopes carry a <code>content_hash</code>; the pipeline uses content hashing for dedup downstream, so re-sending the same content with a fresh signature does not produce duplicate intelligence artifacts.
+        </div>
+        <div class="callout warn">
+          <strong>Key handling.</strong> Per-plugin signing secrets are provisioned by your Sentra operator and stored server-side in a secret manager. Treat your copy like a password: server-side only, rotated if exposed.
+        </div>
+
+        <h2>Registering a plugin</h2>
+        <p>Webhook senders are <em>source plugins</em> in Sentra's plugin registry. Operators manage them (create, enable/disable, connection config) through the <a href="rest-api.html">Admin/Pipeline REST endpoints</a> or the admin panel; each registered plugin gets its own HMAC signing key.</p>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

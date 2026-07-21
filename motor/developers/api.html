@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>REST API — Motor</title>
+  <meta name="description" content="Motor's REST reference: infra control (Cloudflare, Proxmox, Docker, GitHub CI, GCP, Coder, Supabase, NPM), observability reads, NATS, billing, feedback, and platform endpoints.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html" class="active">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>REST API reference</h1>
+        <p class="lead">Around 45 paths in one OpenAPI 3.1 contract (<code>api/openapi.yaml</code> in the repository). Unless marked otherwise, every endpoint below accepts a Fort JWT (<code>Authorization: Bearer</code>) or a Coder session cookie — see <a href="authentication.html">Auth &amp; roles</a>. Examples use <code>https://motor.example.com</code>.</p>
+        <div class="callout">
+          <strong>Two conventions to know.</strong> Destructive endpoints are confirm-gated in the dashboard — automate them with equivalent care. And any integration that isn't configured answers <code>503</code> with the missing env var named in the error, never a 404.
+        </div>
+
+        <h2>Infra control</h2>
+        <p>Live state and operator actions across your infrastructure. GitHub and GCP endpoints run as the operator's own <code>gh</code> / <code>gcloud</code> CLI session per request — no stored cloud tokens.</p>
+
+        <h3>Cloudflare</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/cloudflare/dns <span>— DNS records for the configured zone</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/cloudflare/purge <span>— purge everything in the zone cache (destructive)</span></div>
+
+        <h3>Proxmox</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/proxmox/resources <span>— cluster resources: nodes, VMs, CTs, storage</span></div>
+
+        <h3>Docker</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/docker/containers <span>— container list per host in <code>DOCKER_HOSTS</code></span></div>
+
+        <h3>GCP</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/gcp/projects <span>— GCP projects via the operator's gcloud session</span></div>
+
+        <h3>GitHub &amp; CI</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/github/repos <span>— the org's repos (<code>?limit=</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/github/runs <span>— recent workflow runs across repos</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/ci/runs <span>— alias of <code>/api/github/runs</code></span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/ci/dispatch <span>— trigger a <code>workflow_dispatch</code></span></div>
+        <pre><code>curl -X <span class="k">POST</span> https://motor.example.com/api/ci/dispatch \
+  -H <span class="s">'Authorization: Bearer &lt;fort-jwt&gt;'</span> \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"repo":"my-org/my-service","workflow":"deploy.yml","ref":"master"}'</span>
+<span class="c"># runs `gh workflow run …` as the operator's own gh session</span></code></pre>
+
+        <h3>Supabase &amp; proxy hosts</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/supabase <span>— pg-meta introspection: tables (rows/size/RLS) + extensions. Schema metadata only, never rows</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/proxy <span>— Nginx Proxy Manager hosts: domains → upstream, SSL, enabled</span></div>
+
+        <h3>Coder workspaces &amp; team</h3>
+        <div class="endpoint"><span class="method get">GET</span> /api/workspaces <span>— Coder workspaces via the operator's session</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/workspaces/{owner}/{name}/{action} <span>— <code>start</code> | <code>stop</code> (confirm-gated in the UI)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/team <span>— Coder platform members: username, name, email, status, roles</span></div>
+
+        <h2>Observability reads</h2>
+        <p>The read side of the observability hub — what the <a href="ingest.html">Sentry-compatible ingest</a> writes:</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/observability/projects <span>— all tracked projects</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/observability/projects/{id}/issues <span>— issues (<code>?status=&amp;limit=&amp;offset=</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/observability/issues/{id} <span>— one issue with its recent events</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/observability/logs <span>— log records (<code>?project=</code> required; <code>level</code>, <code>service</code>, <code>search</code>, <code>limit</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/observability/monitors <span>— uptime/heartbeat monitors (<code>?project=</code> required)</span></div>
+        <pre><code>curl -H <span class="s">'Authorization: Bearer &lt;fort-jwt&gt;'</span> \
+  <span class="s">'https://motor.example.com/api/observability/logs?project=1&amp;level=error&amp;search=timeout&amp;limit=50'</span></code></pre>
+
+        <h2>NATS monitor + control</h2>
+        <div class="endpoint"><span class="method get">GET</span> /api/nats/servers <span>— server overview (<code>/varz</code> per monitor endpoint)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/nats/streams <span>— JetStream streams + consumers (<code>/jsz</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/nats/connections <span>— active connections (<code>/connz</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/nats/streams/{name}/purge <span>— drop all messages in a stream (destructive, confirm-gated)</span></div>
+
+        <h2>Billing</h2>
+        <p>Proxied to Fort's admin billing API (requires <code>FORT_PLATFORM_TOKEN</code> to be configured):</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/billing/tokens <span>— API keys</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/billing/platforms <span>— billing platforms</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/billing/users <span>— billing users</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/billing/usage <span>— push a usage event (Fort billing is push-based; there is no read-usage GET)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/billing/invoices/generate <span>— generate an invoice</span></div>
+
+        <h2>Feedback</h2>
+        <p>Two distinct surfaces. The <strong>admin board</strong> is operator-gated; the <strong>SDK surface</strong> under <code>/api/issues/v1</code> is authenticated with the project publishable key and scoped per reporter (it's what the <a href="sdks.html">motor-feedback widget</a> calls):</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/feedback/issues <span>— every SDK-reported issue (operator board, Fort/Coder auth)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/issues/v1/session <span>— mint an anonymous reporter session (<code>motor_rps_…</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/issues/v1/issues <span>— file a bug / change / question / discussion</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/issues/v1/issues <span>— this reporter's issues (<code>X-Reporter-Session</code> required)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/issues/v1/issues/{id} <span>— one issue with comments + attachments</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/issues/v1/issues/{id} <span>— update triage status</span></div>
+        <div class="endpoint"><span class="method delete">DELETE</span> /api/issues/v1/issues/{id} <span>— delete one of the reporter's own issues</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/issues/v1/issues/{id}/comments <span>— list comments</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/issues/v1/issues/{id}/comments <span>— add a comment</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/issues/v1/uploads <span>— one attachment (multipart, max 5 MB, image/PDF/text)</span></div>
+
+        <h2>Platform</h2>
+        <div class="endpoint"><span class="method get">GET</span> /healthz <span>— liveness probe, no auth</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/me <span>— the authenticated identity (source: fort or coder)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/plugins <span>— enabled + nav-visible plugins (the dashboard sidebar source)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/plugins/all <span>— every plugin incl. disabled (admin registry)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/plugins/{slug} <span>— a plugin's page config: header + enabled features (a disabled plugin returns 404)</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/plugins/{slug} <span>— toggle <code>enabled</code> / <code>nav_visible</code> / <code>sort_order</code> (admin)</span></div>
+        <pre><code>curl -H <span class="s">'Authorization: Bearer &lt;fort-jwt&gt;'</span> https://motor.example.com/api/plugins
+<span class="c"># [ { "slug":"errors", "name_en":"Errors", "group_key":"observability",</span>
+<span class="c">#     "route":"/errors", "icon":"Bug", "sort_order":1 }, … ]</span></code></pre>
+
+        <h2>Errors and status codes</h2>
+        <table class="docs">
+          <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>400</td><td>Bad request — invalid input or missing configuration for the call</td></tr>
+            <tr><td>401</td><td>No valid Fort JWT / Coder session (or invalid DSN key on ingest routes)</td></tr>
+            <tr><td>403</td><td>Valid token, missing <code>admin</code> role (admin-gated surfaces)</td></tr>
+            <tr><td>404</td><td>Resource not found — including disabled plugins and non-owned feedback issues</td></tr>
+            <tr><td>502</td><td>Upstream API error (Cloudflare, Proxmox, Docker Engine, Coder, …)</td></tr>
+            <tr><td>503</td><td>Integration not configured or unreachable — the error names the env var to set</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="ingest.html">Sentry-compatible ingest</a> — the write side of the observability endpoints above.</li>
+          <li><a href="mcp.html">MCP server &amp; tools</a> — the same surfaces exposed to AI agents.</li>
+          <li><a href="deployment.html">Self-hosting &amp; integrations</a> — the env var behind each 503.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

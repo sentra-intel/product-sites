@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCP server &amp; tools — Motor</title>
+  <meta name="description" content="Motor's Model Context Protocol server: /mcp/admin and /mcp/user Streamable-HTTP endpoints, Fort role gating, and the full catalog of 33 motor_* tools for AI agents.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html" class="active">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>MCP server &amp; tools</h1>
+        <p class="lead">Motor is MCP-native: the same data and actions the dashboard uses are exposed to AI agents over the Model Context Protocol — 33 <code>motor_*</code> tools behind the same Fort role gates as the UI. There is no separate "agent API" to maintain; an agent operating your infra sees exactly what an operator sees.</p>
+
+        <h2>Two endpoints, one role model</h2>
+        <div class="endpoint"><span class="method post">POST</span> /mcp/admin <span>— Fort JWT with <code>role=admin</code>: all 23 read tools + the 10 mutating tools</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /mcp/user <span>— any valid Fort JWT: the 23 read tools only</span></div>
+        <p>Both are <strong>Streamable-HTTP</strong> MCP endpoints (JSON-RPC over POST; GET/DELETE manage the session). They carry their own Fort auth — a token without the admin role gets <code>403</code> from <code>/mcp/admin</code>, and the mutating tools simply do not exist on <code>/mcp/user</code>.</p>
+
+        <h2>Connecting a client</h2>
+        <p>Any MCP client that supports Streamable HTTP with custom headers can connect. A typical configuration:</p>
+        <pre><code>{
+  <span class="s">"mcpServers"</span>: {
+    <span class="s">"motor"</span>: {
+      <span class="s">"type"</span>: <span class="s">"http"</span>,
+      <span class="s">"url"</span>: <span class="s">"https://motor.example.com/mcp/user"</span>,
+      <span class="s">"headers"</span>: {
+        <span class="s">"Authorization"</span>: <span class="s">"Bearer &lt;fort-jwt&gt;"</span>
+      }
+    }
+  }
+}</code></pre>
+        <p>Swap the URL to <code>/mcp/admin</code> (with an admin-role token) when the agent needs to act, not just read. Get the JWT from Fort's login endpoint — see <a href="authentication.html">Auth &amp; roles</a>.</p>
+
+        <h2>Tool catalog (33 tools)</h2>
+        <p>All tool names, grouped by capability. <strong>Read</strong> tools are available on both endpoints; <strong>Mutating</strong> tools are admin-only and absent from <code>/mcp/user</code>.</p>
+
+        <h3>Observability — 6 tools</h3>
+        <table class="docs">
+          <thead><tr><th>Tool</th><th>Access</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor_list_projects</td><td><span class="pill">Read</span></td><td>List all observability projects (id, slug, name, platform)</td></tr>
+            <tr><td>motor_list_issues</td><td><span class="pill">Read</span></td><td>List error-tracking issues for a project, with optional status filter</td></tr>
+            <tr><td>motor_get_issue</td><td><span class="pill">Read</span></td><td>Get one issue by id with its most recent events</td></tr>
+            <tr><td>motor_list_logs</td><td><span class="pill">Read</span></td><td>List log records with level/service/full-text filters and a since/until window</td></tr>
+            <tr><td>motor_list_monitors</td><td><span class="pill">Read</span></td><td>List uptime/heartbeat monitors for a project</td></tr>
+            <tr><td>motor_create_issue</td><td><span class="pill gold">Mutating · admin</span></td><td>Create a human-reported feedback issue (the same path the Feedback SDK uses)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>NATS — 7 tools</h3>
+        <table class="docs">
+          <thead><tr><th>Tool</th><th>Access</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor_nats_servers</td><td><span class="pill">Read</span></td><td>Server overview (/varz) per configured monitor endpoint</td></tr>
+            <tr><td>motor_nats_streams</td><td><span class="pill">Read</span></td><td>JetStream streams + consumers (/jsz)</td></tr>
+            <tr><td>motor_nats_connections</td><td><span class="pill">Read</span></td><td>Active connections (/connz)</td></tr>
+            <tr><td>motor_nats_publish</td><td><span class="pill gold">Mutating · admin</span></td><td>Publish a message to a NATS subject</td></tr>
+            <tr><td>motor_nats_purge_stream</td><td><span class="pill gold">Mutating · admin</span></td><td>Drop all messages in a JetStream stream (destructive)</td></tr>
+            <tr><td>motor_nats_delete_stream</td><td><span class="pill gold">Mutating · admin</span></td><td>Permanently delete a stream and all its messages (irreversible)</td></tr>
+            <tr><td>motor_nats_delete_consumer</td><td><span class="pill gold">Mutating · admin</span></td><td>Permanently delete a durable consumer and its pending/ack state (irreversible)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Infra — 13 tools</h3>
+        <table class="docs">
+          <thead><tr><th>Tool</th><th>Access</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor_docker_containers</td><td><span class="pill">Read</span></td><td>List Docker containers across the configured hosts (all states)</td></tr>
+            <tr><td>motor_docker_container_action</td><td><span class="pill gold">Mutating · admin</span></td><td>Start, stop, or restart a container by id across the configured hosts</td></tr>
+            <tr><td>motor_list_workspaces</td><td><span class="pill">Read</span></td><td>List Coder workspaces (name, owner, status, template) via the operator's CLI session</td></tr>
+            <tr><td>motor_workspace_action</td><td><span class="pill gold">Mutating · admin</span></td><td>Start or stop a Coder workspace by owner and name</td></tr>
+            <tr><td>motor_proxmox_resources</td><td><span class="pill">Read</span></td><td>Proxmox cluster resources: nodes, VMs, containers, storage</td></tr>
+            <tr><td>motor_proxy_hosts</td><td><span class="pill">Read</span></td><td>Nginx Proxy Manager hosts (domains → upstream, SSL, enabled)</td></tr>
+            <tr><td>motor_cloudflare_dns</td><td><span class="pill">Read</span></td><td>Cloudflare DNS records for the configured zone</td></tr>
+            <tr><td>motor_cloudflare_purge_cache</td><td><span class="pill gold">Mutating · admin</span></td><td>Purge the entire zone cache — purge_everything=true (destructive, irreversible)</td></tr>
+            <tr><td>motor_gcp_projects</td><td><span class="pill">Read</span></td><td>List GCP projects via the operator's gcloud session</td></tr>
+            <tr><td>motor_github_runs</td><td><span class="pill">Read</span></td><td>Recent GitHub Actions workflow runs via the operator's gh session</td></tr>
+            <tr><td>motor_ci_runs</td><td><span class="pill">Read</span></td><td>Alias of motor_github_runs, optionally scoped to one repo</td></tr>
+            <tr><td>motor_dispatch_ci</td><td><span class="pill gold">Mutating · admin</span></td><td>Trigger a workflow_dispatch on a repo via the operator's gh session</td></tr>
+            <tr><td>motor_supabase_overview</td><td><span class="pill">Read</span></td><td>Supabase introspection: largest tables (rows, size, RLS) + extensions via pg-meta</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Billing — 2 tools</h3>
+        <table class="docs">
+          <thead><tr><th>Tool</th><th>Access</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor_billing_tokens</td><td><span class="pill">Read</span></td><td>List Fort API keys via Motor's Fort admin proxy</td></tr>
+            <tr><td>motor_billing_usage</td><td><span class="pill">Read</span></td><td>Fort billing usage with an optional query (platform_id, from, to)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Platform — 5 tools</h3>
+        <table class="docs">
+          <thead><tr><th>Tool</th><th>Access</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>motor_list_plugins</td><td><span class="pill">Read</span></td><td>List all dashboard plugins, including disabled and nav-hidden, with toggle fields</td></tr>
+            <tr><td>motor_get_plugin</td><td><span class="pill">Read</span></td><td>Get one plugin header by slug (name, icon, group, route, flags)</td></tr>
+            <tr><td>motor_toggle_plugin</td><td><span class="pill gold">Mutating · admin</span></td><td>Enable or disable a dashboard plugin by slug</td></tr>
+            <tr><td>motor_list_team</td><td><span class="pill">Read</span></td><td>List Coder platform members (username, name, email, status, roles)</td></tr>
+            <tr><td>motor_list_feedback</td><td><span class="pill">Read</span></td><td>List human-reported feedback issues for a project</td></tr>
+          </tbody>
+        </table>
+
+        <h2>The safety model</h2>
+        <ul>
+          <li><strong>Read vs mutate is structural, not advisory.</strong> The 10 mutating tools are registered only on the admin server — a user-endpoint session cannot call them, list them, or discover them.</li>
+          <li><strong>No business logic in the MCP layer.</strong> Every tool handler is a thin shim onto the same <code>Deps</code> functions that back the HTTP handlers — the same queries, the same CLI delegation, the same NATS client. An agent can never reach a code path the REST API doesn't have.</li>
+          <li><strong>Typed, server-resolved arguments.</strong> Projects and slugs come from typed tool args resolved server-side, never from a spoofable identity field; the underlying queries are parameterised.</li>
+          <li><strong>CLI delegation carries through.</strong> <code>motor_dispatch_ci</code> and <code>motor_gcp_projects</code> run as the operator's own <code>gh</code> / <code>gcloud</code> session — an agent inherits exactly the operator's cloud access, and nothing outlives the session.</li>
+        </ul>
+        <div class="callout warn">
+          <strong>Destructive tools mean it.</strong> <code>motor_nats_delete_stream</code>, <code>motor_nats_delete_consumer</code>, and <code>motor_cloudflare_purge_cache</code> are irreversible. If you automate them, put an approval step in the agent's loop — the role gate authorizes, it does not supervise.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="authentication.html">Auth &amp; roles</a> — getting a Fort JWT and what role=admin unlocks.</li>
+          <li><a href="api.html">REST API</a> — the HTTP twins of every tool above.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

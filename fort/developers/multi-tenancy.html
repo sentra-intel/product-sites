@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Platforms &amp; white-label — Fort</title>
+  <meta name="description" content="Fort's multi-platform model: how a request resolves to a tenant, per-platform branding and settings, allowed users and domains, platform API tokens, and the isolation guarantee.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html" class="active">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Platforms &amp; white-label</h1>
+        <p class="lead">One Fort deployment serves many consuming apps — Fort calls them <strong>platforms</strong>. Each platform gets its own branding, settings, allowed users, API tokens and role assignments, isolated at the query layer. That's how one auth authority powers a whole product suite, or a white-label SaaS with a tenant per customer.</p>
+
+        <h2>How a request resolves to a platform</h2>
+        <p>Every incoming request is resolved to exactly one platform before any per-tenant data is touched. The contract has three steps, in order:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Step</th><th>Signal</th><th>How it matches</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1. Token</td><td><code>X-Fort-Platform</code> header or <code>?platform=</code> query param</td><td>The platform API token is SHA-256-hashed and looked up against enabled platforms. Strongest signal — use it for service-to-service calls.</td></tr>
+            <tr><td>2. Origin</td><td><code>Origin</code> header, or the <code>Referer</code> origin</td><td>Matched against each platform's registered <code>allowed_origins</code> and <code>domains</code>. This is how browser traffic from your app's domain lands on the right tenant automatically.</td></tr>
+            <tr><td>3. Default</td><td>—</td><td>Falls back to the platform with slug <code>default</code>. If none exists, that's a server configuration error (500) — never a silent cross-tenant read.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>The default platform is not token-reachable — by design.</strong> Token resolution explicitly excludes <code>slug='default'</code>, so a leaked or guessed placeholder token can never resolve to the default tenant. A real tenant needs its own slug and a randomly minted token.
+        </div>
+
+        <h2>The isolation guarantee</h2>
+        <p>The resolved platform id is a <em>mandatory</em> predicate: every per-platform query inside Fort carries <code>WHERE platform_id = $resolved</code>. A request resolved for platform A cannot read platform B's branding, settings, users or tokens — cross-platform reads are treated as a security defect, not a feature gap. Role resolution is per-platform too: the same user can be <code>admin</code> in one platform and <code>viewer</code> in another, and the <a href="authentication.html">access token</a> is minted with the role, <code>roles[]</code> and <code>platform</code> slug for the platform being logged into.</p>
+
+        <h2>Per-platform branding</h2>
+        <p>Branding is public (pre-login) so login screens can be themed before any session exists:</p>
+        <div class="endpoint"><span class="method get">GET</span> /v1/branding <span>— resolved platform's branding; the SDK passes <code>?platform=&lt;slug&gt;</code> explicitly</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/branding <span>— partial update (validated hex colors); publishes <code>fort.branding.updated</code></span></div>
+        <pre><code>curl <span class="s">'https://fort.example.com/v1/branding?platform=acme'</span>
+<span class="c"># name, colors, icon and login-method visibility for the "acme" platform —</span>
+<span class="c"># the &lt;FortProvider&gt; consumes this to render a fully branded login widget</span></code></pre>
+        <p>Admins can also target a specific platform when updating: <code>PATCH /v1/admin/branding?platform=&lt;id&gt;</code>; otherwise the request-resolved platform is used.</p>
+
+        <h2>Per-platform settings &amp; access control</h2>
+        <p>Settings live in four namespaces — <code>auth_policy</code> (lockout thresholds), <code>session</code>, <code>providers</code> (which login methods are on), <code>system</code> — managed over <a href="api.html"><code>/v1/admin/settings</code></a>. Access control adds two allowlists per platform:</p>
+        <ul>
+          <li><strong>Allowed users</strong> (<code>/v1/admin/allowed-users</code>) — explicit email allowlist for closed deployments.</li>
+          <li><strong>Domain allowlist</strong> (<code>/v1/admin/domains</code>) — which email domains may register; the SDK's registration flow fail-closes against <code>GET /v1/auth/domain-check</code> before even attempting signup.</li>
+        </ul>
+
+        <h2>Managing platforms &amp; API tokens</h2>
+        <div class="endpoint"><span class="method get">GET</span> /v1/admin/platforms <span>— list; token hashes are never returned</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/platforms <span>— create; the platform API token is returned <strong>once</strong></span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /v1/admin/platforms/{id} <span>— update name, origins, domains, enabled</span></div>
+        <div class="endpoint"><span class="method delete">DELETE</span> /v1/admin/platforms/{id} <span>— delete (blocked for <code>default</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/admin/platforms/{id}/rotate-token <span>— mint a replacement token (returned once)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /v1/me/platforms <span>— the authenticated user's platforms (powers a platform switcher)</span></div>
+        <p>Your consuming service stores its token as <code>FORT_PLATFORM_TOKEN</code> and sends it on every Fort call — the Go SDK does this automatically via <code>Config.PlatformToken</code>, the TS admin/billing clients via their <code>platform</code>/<code>platformToken</code> options.</p>
+        <div class="callout warn">
+          <strong>Platform tokens are credentials.</strong> Fort stores only their SHA-256 hash and shows the plaintext exactly once at create/rotate time. Keep them server-side, rotate on any suspicion of exposure, and never embed them in browser bundles — browser traffic should resolve by Origin instead.
+        </div>
+
+        <h2>Wiring a new white-label tenant</h2>
+        <ol>
+          <li><strong>Create the platform</strong> — <code>POST /v1/admin/platforms</code> with slug, allowed origins and domains. Store the returned token as the tenant service's <code>FORT_PLATFORM_TOKEN</code>.</li>
+          <li><strong>Brand it</strong> — <code>PATCH /v1/admin/branding?platform=…</code> with the tenant's name, colors and icon.</li>
+          <li><strong>Set its policy</strong> — enabled login methods in the <code>providers</code> namespace; lockout policy in <code>auth_policy</code>; domain allowlist if registration is restricted.</li>
+          <li><strong>Point the app at Fort</strong> — the SDK's <code>&lt;FortProvider&gt;</code> fetches <code>/v1/branding?platform=&lt;slug&gt;</code> and renders the tenant's login experience; the backend verifies tokens with the platform token attached.</li>
+          <li><strong>Add members</strong> — platform membership additions emit <a href="events.html"><code>fort.platform.member.added</code></a>, so the tenant app can provision users eagerly.</li>
+        </ol>
+        <div class="callout">
+          <strong>No new deployment per tenant.</strong> Adding a platform is a set of API calls against the running Fort — no rebuild, no separate database, no second auth stack to operate.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

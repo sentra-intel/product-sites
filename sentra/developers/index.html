@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Portal — Sentra</title>
+  <meta name="description" content="Build on Sentra: REST, GraphQL, and WebSocket APIs, inbound webhooks, and a Go capability plugin SDK. Quickstart, authentication, and self-hosting guides.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html" class="active">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Sentra Developer Portal</h1>
+        <p class="lead">Sentra turns raw content — articles, social posts, broadcast clips — into structured intelligence: alerts, narratives, events, entity networks, and executive briefings. Everything the dashboard shows is available to you over the same APIs.</p>
+
+        <h2>What the API gives you</h2>
+        <p>Connect once, and intelligence flows both ways — your content in, structured intelligence out, in real time:</p>
+        <div class="io">
+          <div class="io-box">
+            <h5>Into Sentra</h5>
+            <ul>
+              <li><span class="m">POST</span>Signed webhooks — your content into the pipeline</li>
+              <li><span class="m">NATS</span>Collection-layer envelopes (optional seam)</li>
+              <li><span class="m">GO</span>Your own capability plugins</li>
+            </ul>
+          </div>
+          <div class="io-arrow"></div>
+          <div class="io-box mid">
+            <h5>Sentra enriches</h5>
+            <ul>
+              <li>Entities, sentiment, severity extracted — EN &amp; AR</li>
+              <li>Signals clustered into narratives &amp; events</li>
+              <li>Briefs synthesized, networks built — with provenance</li>
+            </ul>
+          </div>
+          <div class="io-arrow a2"></div>
+          <div class="io-box">
+            <h5>Into your systems</h5>
+            <ul>
+              <li><span class="m">GQL</span>Structured reads — one query, full payload</li>
+              <li><span class="m">WS</span>Live push the moment artifacts land</li>
+              <li><span class="m">REST</span>Auth, admin &amp; operational automation</li>
+            </ul>
+          </div>
+        </div>
+
+        <h2>What you can build</h2>
+        <div class="grid grid-2" style="margin-block:18px">
+          <div class="tile"><span class="glyph">📥</span><div><h4>Intelligence consumers</h4><p>Pull alerts, narratives, events, entities and briefings for a scope over <a href="graphql.html">GraphQL</a> — and keep them live over <a href="websocket.html">WebSocket</a> instead of polling. Route critical alerts into ops-room screens, Slack/Teams, or a SOC.</p></div></div>
+          <div class="tile"><span class="glyph">📤</span><div><h4>Content producers</h4><p>Push signed content envelopes into the enrichment pipeline through the inbound <a href="webhooks.html">webhook endpoint</a> — internal reports and third-party feeds become first-class intelligence.</p></div></div>
+          <div class="tile"><span class="glyph">🧩</span><div><h4>New capabilities</h4><p>Extend the platform itself with a Go <a href="capabilities.html">capability plugin</a> that consumes enriched envelopes and writes new artifacts — scaffolded from one CLI command.</p></div></div>
+          <div class="tile"><span class="glyph">⚙️</span><div><h4>Operational integrations</h4><p>Server-to-server automation against the admin pipeline API with a <a href="authentication.html">service key</a> — feed BI warehouses, trigger downstream workflows, embed live data in internal portals.</p></div></div>
+        </div>
+
+        <h2>Three API surfaces, one binary</h2>
+        <p>Sentra ships as a single Go binary (<code>sentra-hub</code>) that serves all three surfaces from the same process:</p>
+        <div class="endpoint"><span class="method post">POST</span> /api/v1/graphql <span>— primary read API for dashboard-style data (<a href="graphql.html">GraphQL</a>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/* <span>— REST surface: auth, health, tickets, admin pipeline (<a href="rest-api.html">REST API</a>)</span></div>
+        <div class="endpoint"><span class="method ws">WS</span> /ws?ticket=… <span>— real-time updates via one-time auth tickets (<a href="websocket.html">WebSocket</a>)</span></div>
+        <div class="callout">
+          <strong>Base URLs.</strong> Local development: <code>http://localhost:8090</code> · Production: your own deployment host (Sentra is self-hosted) — examples below use <code>https://sentra.example.com</code>. All authenticated requests carry a JWT — see <a href="authentication.html">Authentication</a>.
+        </div>
+        <div class="callout">
+          <strong>Client SDKs are on the roadmap.</strong> There are no published client SDKs today — the REST, GraphQL, and WebSocket contracts documented here are the supported integration surface, and they are stable enough to call directly from any HTTP client. The Go capability plugin SDK (for extending the platform itself) is available now.
+        </div>
+
+        <h2>5-minute quickstart</h2>
+        <h3>1. Run Sentra</h3>
+        <p>From a clone of the repository, with Docker and Go installed:</p>
+        <pre><code><span class="c"># Build the binary</span>
+make build                          <span class="c"># → ./bin/sentra-hub</span>
+
+<span class="c"># Full local stack: docker compose up -d (Postgres + NATS)</span>
+<span class="c"># + migrations + the API server on :8090</span>
+make start
+
+<span class="c"># — or step by step —</span>
+docker compose up -d                <span class="c"># Postgres :5444, NATS :4244</span>
+./bin/sentra-hub <span class="k">migrate</span>            <span class="c"># apply db/migrations (idempotent)</span>
+./bin/sentra-hub <span class="k">seed</span> --profile dev  <span class="c"># seed a dev dataset</span>
+./bin/sentra-hub <span class="k">serve</span>              <span class="c"># bridge API on PORT (default 8090)</span></code></pre>
+        <p>Confirm it is up — no auth required:</p>
+        <pre><code>curl http://localhost:8090/health
+<span class="c"># {"status":"ok","service":"sentra-bridge","db":"connected","version":"0.1.0"}</span></code></pre>
+
+        <h3>2. Make your first authenticated request</h3>
+        <p>Sign in to get session cookies (<code>access_token</code> + <code>refresh_token</code>):</p>
+        <pre><code>curl -c cookies.txt -X <span class="k">POST</span> http://localhost:8090/api/auth/sign-in \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"you@example.com","password":"••••••••"}'</span>
+<span class="c"># {"status":"authenticated","redirect_to":"/dashboard","expires_at":1789000000}</span></code></pre>
+
+        <h3>3. Run your first GraphQL query</h3>
+        <pre><code>curl -b cookies.txt -X <span class="k">POST</span> http://localhost:8090/api/v1/graphql \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"query":"{ sessionPage { session { email role isSuperAdmin } wsTicket } }"}'</span></code></pre>
+        <p>The response includes your session and a <code>wsTicket</code> you can use immediately to open a <a href="websocket.html">live WebSocket connection</a>.</p>
+
+        <h2>Architecture overview</h2>
+        <p>One binary, one PostgreSQL database, real-time by design:</p>
+        <pre><code><span class="c">Collection layer (optional, NATS)          SCOUT_NATS_URL — envelopes.raw</span>
+      │
+      ▼
+ scoutfeed consumer      <span class="c">INSERT into raw_envelopes + pg_notify(…)</span>
+      │
+      ▼
+ capability subscribers  <span class="c">alerts · narratives · events · entities ·</span>
+      │                  <span class="c">briefings · coverage · tasks · notifications …</span>
+      │  <span class="c">pg_notify on artifact writes</span>
+      ▼
+ WebSocket hub           <span class="c">wss://…/ws?ticket=&lt;one-time-ticket&gt;</span>
+      │
+      ▼
+ Your clients            <span class="c">GraphQL / REST reads + live WS updates</span></code></pre>
+        <ul>
+          <li><strong>Single binary</strong> — <code>sentra-hub serve</code> embeds the REST/GraphQL/WebSocket server, the plugin host, and the capability subscribers.</li>
+          <li><strong>PostgreSQL as the backbone</strong> — every artifact is a table row; Postgres <code>LISTEN/NOTIFY</code> drives the WebSocket hub, so live updates need no separate message broker.</li>
+          <li><strong>Optional seams, cleanly decoupled</strong> — collection arrives over NATS (<code>SCOUT_NATS_URL</code>), AI inference routes through an OpenAI-compatible HTTP gateway (<code>CORTEX_HTTP_ADDR</code>, with direct provider keys as fallback), and auth delegates to a gateway (<code>FORT_URL</code>). Each seam is env-configured and Sentra runs standalone without any of them.</li>
+        </ul>
+
+        <h2>Best practices</h2>
+        <div class="callout">
+          <strong>Read over GraphQL, listen over WebSocket.</strong> Page queries like <code>dashboardPage</code> return a full payload in one round-trip. Use the WebSocket stream to know <em>when</em> to refetch — never poll.
+        </div>
+        <div class="callout">
+          <strong>Treat tickets as disposable.</strong> WebSocket tickets are one-time and expire in 10 seconds. Request a fresh ticket for every connect and reconnect — never cache one.
+        </div>
+        <div class="callout">
+          <strong>Expect bilingual data.</strong> Every user-facing text field comes in an EN/AR pair (<code>titleEn</code>/<code>titleAr</code>, <code>name_en</code>/<code>name_ar</code>). The Arabic field can be null; fall back to English in your UI.
+        </div>
+        <div class="callout warn">
+          <strong>Keep credentials server-side.</strong> Service keys (<code>X-Service-Key</code>) and webhook HMAC secrets must never reach a browser. Browser clients should rely on the HTTP-only cookie session.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="authentication.html">Authentication</a> — sign-in flow, tokens, roles, service keys.</li>
+          <li><a href="rest-api.html">REST API reference</a> — every endpoint, by tag.</li>
+          <li><a href="graphql.html">GraphQL</a> — the schema and example queries.</li>
+          <li><a href="websocket.html">WebSocket</a> — the ticket flow and a complete client example.</li>
+          <li><a href="webhooks.html">Webhooks</a> — push content into the pipeline with signed requests.</li>
+          <li><a href="capabilities.html">Capability SDK</a> — extend Sentra with your own Go capability.</li>
+          <li><a href="deployment.html">Deployment</a> — self-host with Docker or Kubernetes.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

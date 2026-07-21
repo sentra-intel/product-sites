@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>REST API Reference — Sentra</title>
+  <meta name="description" content="Reference for the Sentra Bridge REST API: base URLs, conventions, and every endpoint by tag — Health, Public, Auth, WebSocket, GraphQL, Pipeline, and Admin.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html" class="active">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>REST API reference</h1>
+        <p class="lead">The Sentra Bridge REST API (OpenAPI 3.1.0) covers auth, health, WebSocket tickets, the GraphQL transport, the inbound pipeline, and the admin surface. The full machine-readable contract lives at <code>api/openapi.yaml</code> in the repository.</p>
+
+        <h2>Base URLs</h2>
+        <table class="docs">
+          <thead><tr><th>Environment</th><th>Base URL</th></tr></thead>
+          <tbody>
+            <tr><td>http://localhost:8090</td><td>Local development (default <code>PORT</code>)</td></tr>
+            <tr><td>https://sentra.example.com</td><td>Your deployment host (self-hosted)</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Conventions</h2>
+        <ul>
+          <li><strong>Content type</strong> — request and response bodies are <code>application/json</code>.</li>
+          <li><strong>Authentication</strong> — unless marked public, endpoints require a JWT (Bearer header or <code>access_token</code> cookie). Endpoints labeled <em>admin/service-key</em> require <code>role=admin</code>/<code>super_admin</code> in the JWT claims, or an <code>X-Service-Key</code> header. See <a href="authentication.html">Authentication</a>.</li>
+          <li><strong>Errors</strong> — failures return an error object; details are intentionally generic:</li>
+        </ul>
+        <pre><code>{ <span class="s">"error"</span>: <span class="s">"…"</span>, <span class="s">"message"</span>: <span class="s">"…"</span> }</code></pre>
+        <ul>
+          <li><strong>Rate limits</strong> — documented per endpoint where they exist (sign-in: 10 req/min per IP; login-methods: 3 req/min per IP).</li>
+          <li><strong>Pagination</strong> — list-style reads are primarily served by <a href="graphql.html">GraphQL</a>, which uses <code>limit</code>/<code>offset</code> arguments. The REST admin list endpoints return full collections.</li>
+        </ul>
+
+        <h2>Health</h2>
+        <div class="endpoint"><span class="method get">GET</span> /health <span>— liveness probe; no auth</span></div>
+        <pre><code>curl https://sentra.example.com/health</code></pre>
+        <pre><code>{
+  <span class="s">"status"</span>: <span class="s">"ok"</span>,
+  <span class="s">"service"</span>: <span class="s">"sentra-bridge"</span>,
+  <span class="s">"db"</span>: <span class="s">"connected"</span>,
+  <span class="s">"version"</span>: <span class="s">"0.1.0"</span>
+}</code></pre>
+
+        <h2>Public</h2>
+        <p>No authentication required.</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/branding <span>— organisation branding for the login page (<code>orgName</code>, <code>logoUrl</code>, <code>primaryColor</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/setup/state <span>— first-run detection (<code>{"is_first_run": bool}</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/setup/status <span>— setup completion status (<code>{"completed": bool}</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/platform/flags <span>— boolean feature flags safe for unauthenticated callers (e.g. <code>demo_mode</code>)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/rum <span>— Real User Monitoring ingest (LCP/INP/CLS telemetry + JS errors); returns 204</span></div>
+
+        <h2>Auth</h2>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/sign-in <span>— email + password sign-in; sets session cookies; rate-limited 10 req/min per IP</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/magic-link <span>— send a magic-link email</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/auth/authorize/google <span>— initiate Google OAuth redirect (302)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/auth/callback <span>— OAuth callback; redirects to the dashboard after token exchange</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/callback <span>— OAuth callback (POST variant)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/refresh <span>— refresh the session using the <code>refresh_token</code> cookie</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/logout <span>— invalidate the session and clear cookies (204)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/forgot-password <span>— send a password-reset email</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/auth/reset-password <span>— exchange an OTP token and set a new password</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/auth/login-methods?email=… <span>— available auth methods for an address; rate-limited 3 req/min per IP</span></div>
+        <pre><code>curl -c cookies.txt -X <span class="k">POST</span> https://sentra.example.com/api/auth/sign-in \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"analyst@example.com","password":"••••••••"}'</span>
+<span class="c"># 200 → {"status":"authenticated","redirect_to":"/dashboard","expires_at":1789000000}</span>
+<span class="c"># 401 → invalid credentials</span></code></pre>
+
+        <h2>WebSocket</h2>
+        <div class="endpoint"><span class="method post">POST</span> /api/ws/ticket <span>— issue a one-time WebSocket auth ticket (10&nbsp;s TTL); requires auth</span></div>
+        <div class="endpoint"><span class="method ws">GET</span> /ws?ticket=… <span>— WebSocket upgrade (101); authenticated by the one-time ticket</span></div>
+        <pre><code>curl -b cookies.txt -X <span class="k">POST</span> https://sentra.example.com/api/ws/ticket
+<span class="c"># {"ticket":"…one-time token, valid 10 seconds…"}</span></code></pre>
+        <p>The ticket request body optionally carries a scope: <code>{"scope": "&lt;scope-slug&gt;"}</code>. A legacy <code>?token=&lt;jwt&gt;</code> query parameter on <code>/ws</code> is still accepted but deprecated. Full flow, channels, and a client example: <a href="websocket.html">WebSocket guide</a>.</p>
+
+        <h2>GraphQL</h2>
+        <div class="endpoint"><span class="method post">POST</span> /api/v1/graphql <span>— the single GraphQL endpoint; body: <code>{query, variables, operationName}</code></span></div>
+        <p>GraphQL errors are returned in the response body (<code>errors</code> array), not as HTTP status codes. Schema and examples: <a href="graphql.html">GraphQL guide</a>.</p>
+
+        <h2>Pipeline</h2>
+        <div class="endpoint"><span class="method post">POST</span> /pipeline/ingest <span>— plugin envelope ingest; HMAC-authenticated via <code>X-Sentra-Plugin</code> + <code>X-Sentra-Signature</code> (no JWT)</span></div>
+        <p>Responses: <code>202</code> accepted · <code>401</code> invalid HMAC signature · <code>409</code> replay detected (nonce reuse) · <code>503</code> ingest publisher unavailable. Signing scheme and examples: <a href="webhooks.html">Webhooks guide</a>.</p>
+
+        <h2>Admin / Pipeline</h2>
+        <p>All endpoints in this tag require an admin JWT <em>or</em> <code>X-Service-Key</code>.</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/summary <span>— pipeline health summary</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/plugins <span>— list all source + capability plugins</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/plugins/{id} <span>— get a plugin by ID or slug</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/admin/pipeline/plugins/{id} <span>— update plugin fields</span></div>
+        <div class="endpoint"><span class="method delete">DELETE</span> /api/admin/pipeline/plugins/{id} <span>— delete a plugin (204)</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /api/admin/pipeline/plugins/{id}/enabled <span>— toggle plugin enabled state</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/plugins/{id}/connection <span>— get core-plugin connection config (<code>cortex-core</code>, <code>scout-core</code>, <code>fort-core</code>)</span></div>
+        <div class="endpoint"><span class="method patch">PUT</span> /api/admin/pipeline/plugins/{id}/connection <span>— update core-plugin connection config (<code>base_url</code>, <code>api_key</code>, <code>nats_url</code>, <code>token</code>, <code>platform_token</code>)</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/capabilities <span>— list all capability plugins</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/capabilities/{id} <span>— get a capability by ID or slug</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/admin/pipeline/capabilities/{id} <span>— update capability fields</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/admin/pipeline/capabilities/{id}/enabled <span>— toggle capability enabled state</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/capabilities/{id}/workflow <span>— get capability workflow steps + 7-day metrics</span></div>
+        <div class="endpoint"><span class="method patch">PUT</span> /api/admin/pipeline/capabilities/{id}/workflow <span>— atomic replace of capability workflow steps</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/scopes <span>— list scopes visible in pipeline admin</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/pipeline/sources <span>— list all source configurations</span></div>
+        <pre><code>curl https://sentra.example.com/api/admin/pipeline/summary \
+  -H <span class="s">"X-Service-Key: $SERVICE_KEY"</span></code></pre>
+
+        <h2>Admin / Prompts</h2>
+        <p>Admin JWT or <code>X-Service-Key</code> required.</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/prompt-templates?capability=… <span>— list prompt templates, optionally filtered by capability</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/prompt-templates/{id} <span>— get a single template with its full body</span></div>
+        <div class="endpoint"><span class="method patch">PATCH</span> /api/admin/prompt-templates/{id} <span>— versioned write: inserts a new version row, never mutates the existing one</span></div>
+        <div class="callout">
+          <strong>Prompt edits are versioned.</strong> A <code>PATCH</code> always creates a new version; previous versions are preserved. This is how capability prompts are tuned at runtime without a redeploy — see the <a href="capabilities.html">Capability SDK</a>.
+        </div>
+
+        <h2>Admin / Data Lab</h2>
+        <p>Admin JWT or <code>X-Service-Key</code> required.</p>
+        <div class="endpoint"><span class="method get">GET</span> /api/data-lab/plugins <span>— list plugins with pipeline observability data</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/data-lab/items <span>— list pipeline processed items</span></div>
+        <div class="endpoint"><span class="method get">GET</span> /api/admin/edge-migration/status <span>— edge function migration tracker</span></div>
+
+        <div class="callout">
+          <strong>Source of truth.</strong> This page lists every endpoint published in <code>api/openapi.yaml</code> (v0.1.0). Where an endpoint's request/response body is described only as a generic object in the contract, consult the repository docs for the current field-level shape.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

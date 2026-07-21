@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebSocket API — Sentra</title>
+  <meta name="description" content="Real-time updates from Sentra over WebSocket: one-time ticket auth, scope subscriptions, message format, and a complete JavaScript client example.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/sentra-logo-full.png" alt="Sentra"></a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html">Authentication</a>
+        </div>
+        <div class="group">
+          <div class="group-title">APIs</div>
+          <a href="rest-api.html">REST API</a>
+          <a href="graphql.html">GraphQL</a>
+          <a href="websocket.html" class="active">WebSocket</a>
+          <a href="webhooks.html">Webhooks</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="capabilities.html">Capability SDK</a>
+          <a href="deployment.html">Deployment</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>WebSocket: real-time updates</h1>
+        <p class="lead">Sentra is real-time by architecture: capability writes fire Postgres <code>LISTEN/NOTIFY</code> triggers, and the WebSocket hub fans those events out to connected clients. Instead of polling, you subscribe to the scopes you care about and refetch only when something changed.</p>
+
+        <h2>Ticket flow</h2>
+        <p>WebSocket connections are authenticated with a <strong>one-time ticket</strong>, not a raw JWT in the URL:</p>
+        <ol>
+          <li>While authenticated (cookie or Bearer), request a ticket:</li>
+        </ol>
+        <div class="endpoint"><span class="method post">POST</span> /api/ws/ticket <span>— body optionally <code>{"scope": "&lt;scope-slug&gt;"}</code></span></div>
+        <pre><code>curl -b cookies.txt -X <span class="k">POST</span> https://sentra.example.com/api/ws/ticket
+<span class="c"># {"ticket":"…"}</span></code></pre>
+        <ol start="2">
+          <li>Connect within <strong>10 seconds</strong> — the ticket expires after that and is <strong>single-use</strong>:</li>
+        </ol>
+        <div class="endpoint"><span class="method ws">WS</span> wss://sentra.example.com/ws?ticket=&lt;ticket&gt;</div>
+        <p><code>sessionPage</code> in <a href="graphql.html">GraphQL</a> also returns a fresh <code>wsTicket</code> field, so a dashboard-style client gets its first ticket for free with its session bootstrap. A legacy <code>?token=&lt;jwt&gt;</code> parameter is still accepted on <code>/ws</code> but is deprecated — use tickets.</p>
+        <div class="callout warn">
+          <strong>Never reuse or cache tickets.</strong> One ticket, one connection, 10-second window. Request a new ticket for every reconnect attempt.
+        </div>
+
+        <h2>Subscribing to scopes</h2>
+        <p>After connecting, send a subscribe frame declaring the scope slugs you want. Each frame <em>replaces</em> the previous scope set:</p>
+        <pre><code>{ <span class="s">"subscribe"</span>: [<span class="s">"&lt;scope-a&gt;"</span>, <span class="s">"&lt;scope-b&gt;"</span>] }</code></pre>
+        <p>Delivery rules:</p>
+        <ul>
+          <li>A client with <strong>no subscription yet</strong> receives all events.</li>
+          <li>Events with scope <code>"global"</code> are delivered to everyone.</li>
+          <li>Otherwise an event is delivered only if its scope is in your subscription set.</li>
+          <li>Per-user events (notifications) are delivered only to that user's connections.</li>
+        </ul>
+
+        <h2>What you receive</h2>
+        <p>The hub listens on Postgres NOTIFY channels wired to triggers on the intelligence tables, and forwards each event as a JSON message:</p>
+        <pre><code>{
+  <span class="s">"type"</span>:  <span class="s">"invalidate"</span>,        <span class="c">// "invalidate" or "push"</span>
+  <span class="s">"table"</span>: <span class="s">"narratives"</span>,        <span class="c">// which table changed</span>
+  <span class="s">"scope"</span>: <span class="s">"&lt;scope-slug&gt;"</span>,      <span class="c">// scope of the change ("global" = everyone)</span>
+  <span class="s">"id"</span>:    <span class="s">"&lt;row-uuid&gt;"</span>,        <span class="c">// UUID of the changed row</span>
+  <span class="s">"op"</span>:    <span class="s">"INSERT"</span>,            <span class="c">// INSERT | UPDATE | DELETE | UPSERT</span>
+  <span class="s">"user_id"</span>: <span class="s">"…"</span>,              <span class="c">// only on per-user tables (notifications)</span>
+  <span class="s">"payload"</span>: { <span class="c">/* full object — only on "push" messages */</span> }
+}</code></pre>
+        <ul>
+          <li><strong>invalidate</strong> — something changed; refetch the affected data (e.g. re-run the relevant GraphQL query).</li>
+          <li><strong>push</strong> — the message carries the full changed object in <code>payload</code>; you can render it without a refetch (used e.g. for intelligence snapshot/briefing updates).</li>
+        </ul>
+        <p>Event streams cover the live intelligence tables, including:</p>
+        <table class="docs">
+          <thead><tr><th>table</th><th>Fires when</th></tr></thead>
+          <tbody>
+            <tr><td>narratives</td><td>A narrative is created or updated</td></tr>
+            <tr><td>alerts</td><td>An alert is created or updated</td></tr>
+            <tr><td>events</td><td>An event is created or updated</td></tr>
+            <tr><td>entities</td><td>An entity record changes</td></tr>
+            <tr><td>breaking_news</td><td>A breaking-news item lands</td></tr>
+            <tr><td>notifications / user_notifications</td><td>A notification for the connected user is created (delivered only to that user)</td></tr>
+            <tr><td>trends</td><td>The live trends board changes</td></tr>
+            <tr><td>intelligence_snapshots</td><td>The pipeline writes a new snapshot/briefing (delivered as a <code>push</code> with payload)</td></tr>
+            <tr><td>entity_mentions</td><td>New entity mentions are recorded</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Complete JavaScript example</h2>
+        <pre><code><span class="k">const</span> API = <span class="s">"https://sentra.example.com"</span>;
+
+<span class="k">async function</span> <span class="k">connect</span>(scopes, { attempt = 0 } = {}) {
+  <span class="c">// 1. Fresh one-time ticket for every attempt (10 s TTL, single use)</span>
+  <span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">`${API}/api/ws/ticket`</span>, {
+    method: <span class="s">"POST"</span>,
+    credentials: <span class="s">"include"</span>,          <span class="c">// send the access_token cookie</span>
+  });
+  <span class="k">if</span> (!res.ok) <span class="k">throw new</span> Error(<span class="s">"not authenticated"</span>);
+  <span class="k">const</span> { ticket } = <span class="k">await</span> res.json();
+
+  <span class="c">// 2. Connect immediately — don't hold the ticket</span>
+  <span class="k">const</span> ws = <span class="k">new</span> WebSocket(<span class="s">`wss://sentra.example.com/ws?ticket=${ticket}`</span>);
+
+  ws.onopen = () =&gt; {
+    attempt = 0;
+    <span class="c">// 3. Declare scope interest (replaces any previous set)</span>
+    ws.send(JSON.stringify({ subscribe: scopes }));
+  };
+
+  ws.onmessage = (event) =&gt; {
+    <span class="k">const</span> msg = JSON.parse(event.data);
+    <span class="k">if</span> (msg.type === <span class="s">"push"</span> &amp;&amp; msg.payload) {
+      render(msg.table, msg.payload);        <span class="c">// full object included</span>
+    } <span class="k">else if</span> (msg.type === <span class="s">"invalidate"</span>) {
+      refetch(msg.table, msg.scope, msg.id); <span class="c">// e.g. invalidate a query cache</span>
+    }
+  };
+
+  <span class="c">// 4. Reconnect with exponential backoff + jitter, fresh ticket each time</span>
+  ws.onclose = () =&gt; {
+    <span class="k">const</span> delay = Math.min(30_000, 1000 * 2 ** attempt) * (0.5 + Math.random());
+    setTimeout(() =&gt; connect(scopes, { attempt: attempt + 1 }), delay);
+  };
+
+  <span class="k">return</span> ws;
+}
+
+connect([<span class="s">"&lt;scope-a&gt;"</span>, <span class="s">"&lt;scope-b&gt;"</span>]);</code></pre>
+
+        <h2>Reconnect &amp; client best practices</h2>
+        <div class="callout">
+          <strong>Backoff with jitter.</strong> On disconnect, retry with exponential backoff (capped, e.g. at 30 s) plus jitter so a fleet of clients doesn't reconnect in lockstep. Reset the backoff after a successful open.
+        </div>
+        <div class="callout">
+          <strong>Refetch on reconnect.</strong> Events that occurred while you were disconnected are not replayed. After reconnecting and resubscribing, refetch your GraphQL queries once to resync.
+        </div>
+        <div class="callout">
+          <strong>Subscribe narrowly.</strong> An unsubscribed connection receives every event. Send your <code>subscribe</code> frame right after <code>onopen</code> to receive only the scopes you display.
+        </div>
+        <div class="callout warn">
+          <strong>Session still matters.</strong> The ticket endpoint requires a valid session — if it starts returning 401, refresh the session (<code>POST /api/auth/refresh</code>) before retrying the connect loop. See <a href="authentication.html">Authentication</a>.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Sentra — AI-powered intelligence platform.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="../developers/index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

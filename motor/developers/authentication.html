@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auth &amp; roles — Motor</title>
+  <meta name="description" content="How Motor authenticates: Fort JWT (primary), Coder session (fallback), admin role gates, DSN-authed public ingest, and the optional feedback HMAC secret.">
+  <link rel="icon" href="../assets/icon.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="" style="height:28px;width:28px"> Motor</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html" class="active">Auth &amp; roles</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API</a>
+          <a href="ingest.html">Sentry-compatible ingest</a>
+          <a href="mcp.html">MCP server &amp; tools</a>
+          <a href="sdks.html">SDKs</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="deployment.html">Self-hosting &amp; integrations</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Auth &amp; roles</h1>
+        <p class="lead">Motor has one primary credential — a <strong>Fort JWT</strong> — plus a Coder session fallback for operators, DSN keys for the public ingest surface, and an admin role gate in front of everything that mutates. Each surface carries exactly the auth it needs, nothing more.</p>
+
+        <h2>Fort JWT (primary)</h2>
+        <p>Fort is the platform's auth gateway. You sign in against Fort, receive a JWT, and send it to Motor on every request:</p>
+        <div class="endpoint"><span class="method post">POST</span> https://&lt;your-fort-host&gt;/v1/auth/login <span>— email + password → JWT</span></div>
+        <pre><code>curl -X <span class="k">POST</span> https://fort.example.com/v1/auth/login \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"email":"operator@example.com","password":"••••••••"}'</span>
+<span class="c"># → { "token": "eyJhbGciOiJIUzI1NiIs…" }</span>
+
+curl -H <span class="s">'Authorization: Bearer eyJhbGciOiJIUzI1NiIs…'</span> \
+  https://motor.example.com/api/me
+<span class="c"># → your session identity (source: "fort") — the same call the dashboard makes</span></code></pre>
+        <p>Motor verifies the token one of two ways, chosen by configuration:</p>
+        <ul>
+          <li><strong>Local HS256</strong> — when <code>FORT_JWT_SECRET</code> is set, Motor verifies the signature locally with the shared secret. No HTTP round-trip per request.</li>
+          <li><strong>Gateway verify</strong> — otherwise Motor calls Fort's <code>POST /v1/token/verify</code> to validate the token.</li>
+        </ul>
+        <div class="callout">
+          <strong>Neither configured?</strong> If both <code>FORT_URL</code> and <code>FORT_JWT_SECRET</code> are unset, Motor degrades to Coder-only auth — it never hard-fails on missing Fort config.
+        </div>
+
+        <h2>Coder session (secondary)</h2>
+        <p>Operators who live in the shared Coder deployment can sign in with their existing session instead. Motor accepts the <code>coder_session_token</code> cookie and verifies it against <code>CODER_URL/api/v2/users/me</code>. Auth precedence is fixed: a Fort <code>Authorization: Bearer</code> header wins; the Coder cookie is the fallback.</p>
+        <pre><code>curl -H <span class="s">'Cookie: coder_session_token=&lt;token&gt;'</span> https://motor.example.com/api/me
+<span class="c"># → session identity (source: "coder")</span></code></pre>
+
+        <h2>Roles: admin gates the mutations</h2>
+        <p>Read access needs any valid identity. Anything that <em>changes</em> state is gated on the Fort <code>admin</code> role in the JWT claims:</p>
+        <table class="docs">
+          <thead><tr><th>Surface</th><th>Requires</th></tr></thead>
+          <tbody>
+            <tr><td>GET /api/* reads</td><td>Any valid Fort JWT or Coder session</td></tr>
+            <tr><td>Mutating REST calls (workspace/container actions, purges, CI dispatch, plugin toggles)</td><td>Admin-gated; the dashboard adds an explicit confirm dialog on top</td></tr>
+            <tr><td>/mcp/user</td><td>Any valid Fort token — the 23 read-only tools</td></tr>
+            <tr><td>/mcp/admin</td><td>Fort JWT with <code>role=admin</code> — read tools + the 10 mutating tools; a non-admin token gets <code>403</code></td></tr>
+          </tbody>
+        </table>
+
+        <h2>DSN auth: the public ingest surface</h2>
+        <p>The Sentry-compatible ingest routes (<code>/api/{project_id}/store/</code>, <code>/envelope/</code>, <code>/logs/</code>, <code>/monitors/{name}/checkin</code>) are deliberately public — they authenticate with the project's <strong>DSN public key</strong>, not an operator session, so any product in your fleet can report without holding a Fort identity:</p>
+        <pre><code>X-Sentry-Auth: Sentry sentry_version=7, sentry_key=&lt;publicKey&gt;
+<span class="c"># also accepted: Authorization header, or a ?sentry_key= query param</span></code></pre>
+        <p>The key resolves the project server-side; the <code>project_id</code> comes from the path. A DSN key can only submit events to its own project — it grants no reads and no actions. Full details on <a href="ingest.html">the ingest page</a>.</p>
+        <p>The <a href="sdks.html">Feedback SDK</a> surface (<code>/api/issues/v1/*</code>) works the same way with a project <em>publishable key</em> sent as <code>Authorization: Bearer &lt;publishableKey&gt;</code> — a public-by-design credential. Reporter identity is scoped by a signed, stateless reporter-session token (<code>motor_rps_…</code>) sent as <code>X-Reporter-Session</code>.</p>
+
+        <h2>Optional: feedback HMAC secret</h2>
+        <p><code>MOTOR_FEEDBACK_SECRET</code> is an optional HMAC secret for the Feedback SDK surface — set it to sign the reporter-session flow in production deployments. See <a href="deployment.html">Self-hosting</a> for where it lives in the environment.</p>
+
+        <h2>Middleware order (what is exempt and why)</h2>
+        <p>Motor's HTTP chain is <code>CORS → auth → handler</code>. Two groups of routes are exempt from the operator-session middleware because they carry their own auth:</p>
+        <pre><code><span class="c">corsMiddleware(cfg)( withAuth(mux) )</span>
+
+withAuth enforces Fort/Coder on /api/* — <span class="k">except</span>:
+  • the DSN-authed ingest routes   <span class="c">(X-Sentry-Auth / publishable key)</span>
+  • the MCP paths /mcp/admin, /mcp/user   <span class="c">(their own Fort auth, incl. role check)</span></code></pre>
+        <div class="callout warn">
+          <strong>Keep operator credentials server-side.</strong> Fort JWTs belong in servers, CLIs, and agents — never in a browser bundle. The only credentials designed to ship to browsers are the DSN public key and the feedback publishable key, which are submit-only by construction.
+        </div>
+
+        <h2>Where to go next</h2>
+        <ul>
+          <li><a href="api.html">REST API</a> — what each endpoint group expects.</li>
+          <li><a href="ingest.html">Sentry-compatible ingest</a> — DSN format and examples.</li>
+          <li><a href="mcp.html">MCP server &amp; tools</a> — role gating for agents in practice.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Motor — the operator's control plane.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

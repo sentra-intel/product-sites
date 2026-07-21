@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tokens &amp; verification — Fort</title>
+  <meta name="description" content="Fort's token model: HS256 access tokens, rotating refresh tokens, purpose-scoped challenge tokens, the claims they carry, and how to verify them.">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="../index.html"><span class="mark">F</span> Fort</a>
+      <nav class="site-nav">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html" class="active">Developers</a>
+        <button class="theme-toggle" type="button">☀</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="group">
+          <div class="group-title">Getting started</div>
+          <a href="index.html">Overview</a>
+          <a href="authentication.html" class="active">Tokens &amp; verification</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Integrate</div>
+          <a href="api.html">REST API reference</a>
+          <a href="sdks.html">SDKs</a>
+          <a href="events.html">Events &amp; NATS</a>
+        </div>
+        <div class="group">
+          <div class="group-title">Platform</div>
+          <a href="multi-tenancy.html">Platforms &amp; white-label</a>
+          <a href="deployment.html">Self-hosting</a>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Tokens &amp; verification</h1>
+        <p class="lead">Fort issues HS256 JWTs signed with <code>FORT_JWT_SECRET</code> and verifies them for every downstream service. Browsers carry the token in an httpOnly cookie; services carry it as <code>Authorization: Bearer</code>. Either way, the recommended verification path is one HTTP call — the secret never leaves Fort.</p>
+
+        <h2>The token model</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>Token</th><th>Form</th><th>Lifetime</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>access_token</td><td>HS256 JWT (httpOnly cookie or Bearer)</td><td>15 min</td><td>The session credential. Sent on every authenticated request; carries the claims below.</td></tr>
+            <tr><td>refresh_token</td><td>Opaque token (httpOnly cookie)</td><td>7 days</td><td>Rotated on every <code>POST /v1/auth/refresh</code> — the old pair is replaced by a new one.</td></tr>
+            <tr><td>csrf_token</td><td>JS-readable cookie</td><td>session</td><td>Cookie-authenticated <em>mutations</em> must echo its value in an <code>X-CSRF-Token</code> header. Bearer callers are exempt.</td></tr>
+            <tr><td>challenge_token</td><td>HS256 JWT, <code>purpose=otp|2fa</code></td><td>short-lived</td><td>Returned by login when a second factor is required; presented as <code>Bearer</code> to the verification step. Never a session.</td></tr>
+            <tr><td>action_token</td><td>HS256 JWT, purpose-scoped</td><td>short-lived</td><td>Returned by <code>otp/verify</code> for <code>reset-password</code>, <code>enroll-2fa</code>, <code>re-verify</code> purposes — authorizes exactly that follow-up action.</td></tr>
+            <tr><td>fort_lock</td><td>HS256 JWT, <code>purpose=lock</code> (cookie)</td><td>7 days</td><td>Lock-screen identity only: lets PIN unlock know <em>who</em> is at the lock screen after the access token lapses. Can never authenticate an API request.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>One rule covers all of these:</strong> anything with a non-empty <code>purpose</code> claim is <em>not</em> a session token. Fort's own verify endpoint rejects challenge tokens presented as sessions (<code>purpose_mismatch</code>) — apply the same rule if you verify locally.
+        </div>
+
+        <h2>Claims</h2>
+        <p>Fort access tokens are Supabase/GoTrue claim-compatible, with Fort's multi-platform extensions on top:</p>
+        <table class="docs">
+          <thead>
+            <tr><th>Claim</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>sub</td><td>string (UUID)</td><td>User ID. Always derive the acting user from this claim — never from a request body.</td></tr>
+            <tr><td>role</td><td>string</td><td>The user's effective role, resolved per platform at mint time (a user can be <code>admin</code> in one platform and <code>viewer</code> in another).</td></tr>
+            <tr><td>roles</td><td>string[]</td><td>All RBAC role names granted to the user in the token's platform — for consumers that need fine-grained role membership.</td></tr>
+            <tr><td>platform</td><td>string</td><td>Platform slug — the tenant context this session was minted for (see <a href="multi-tenancy.html">Platforms</a>).</td></tr>
+            <tr><td>email</td><td>string</td><td>User email (GoTrue convention). Omitted when unavailable.</td></tr>
+            <tr><td>iat</td><td>int64</td><td>Issued-at UNIX timestamp.</td></tr>
+            <tr><td>exp</td><td>int64</td><td>Expiry UNIX timestamp. Always check <code>exp &gt; now()</code>.</td></tr>
+            <tr><td>purpose</td><td>string</td><td>Empty for session tokens; <code>otp</code> / <code>2fa</code> / <code>reset-password</code> / <code>lock</code> for challenge, action and lock tokens.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Verifying tokens</h2>
+
+        <h3>Option A — HTTP verify (recommended)</h3>
+        <p>POST the raw bearer token to Fort. The JWT secret never leaves Fort; your service holds no shared secret:</p>
+        <div class="endpoint"><span class="method post">POST</span> /v1/token/verify</div>
+        <pre><code>curl -X <span class="k">POST</span> https://fort.example.com/v1/token/verify \
+  -H <span class="s">'Content-Type: application/json'</span> \
+  -d <span class="s">'{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'</span></code></pre>
+        <pre><code><span class="c">// 200 — success</span>
+{
+  <span class="s">"valid"</span>: true,
+  <span class="s">"claims"</span>: {
+    <span class="s">"sub"</span>: <span class="s">"550e8400-e29b-41d4-a716-446655440000"</span>,
+    <span class="s">"role"</span>: <span class="s">"admin"</span>,
+    <span class="s">"iat"</span>: 1717000000,
+    <span class="s">"exp"</span>: 1717000900,
+    <span class="s">"purpose"</span>: <span class="s">""</span>
+  }
+}
+
+<span class="c">// 200 — failure (the endpoint always returns 200; check "valid")</span>
+{ <span class="s">"valid"</span>: false, <span class="s">"error"</span>: <span class="s">"token_expired"</span> }</code></pre>
+        <table class="docs">
+          <thead>
+            <tr><th>Error code</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>token_expired</td><td><code>exp</code> is in the past.</td></tr>
+            <tr><td>token_invalid</td><td>Signature mismatch or malformed JWT.</td></tr>
+            <tr><td>token_missing</td><td>Empty token field.</td></tr>
+            <tr><td>purpose_mismatch</td><td>A challenge/action token was presented as a session token.</td></tr>
+          </tbody>
+        </table>
+        <p>The endpoint itself is public — it <em>is</em> the verification service. If your service identifies as a specific platform, send its token in the <code>X-Fort-Platform</code> header (the Go SDK does this automatically when <code>Config.PlatformToken</code> is set).</p>
+
+        <h3>Option B — Local HS256 verify (advanced)</h3>
+        <p>If your service already holds <code>FORT_JWT_SECRET</code> — for example an internal deployment where the secret is shared at deploy time — you can verify locally without the HTTP round-trip:</p>
+        <pre><code><span class="c">// Go — @sentra/fort-auth-sdk's Go package ("fort")</span>
+claims, err := fort.<span class="k">VerifyHS256</span>(tokenStr, os.Getenv(<span class="s">"FORT_JWT_SECRET"</span>))
+<span class="k">if</span> err != nil {
+    <span class="c">// token invalid or expired</span>
+}
+<span class="c">// claims.Sub      — user UUID</span>
+<span class="c">// claims.Role     — effective role;  claims.HasRole("admin") checks Role + Roles[]</span>
+<span class="c">// claims.Platform — platform slug;   claims.Purpose must be "" for sessions</span></code></pre>
+        <p>Verification from any language is standard HS256 JWT verification against the claims table above. Whichever path you take, enforce both invariants yourself when verifying locally: <code>exp &gt; now()</code> and <code>purpose == ""</code>.</p>
+        <div class="callout">
+          <strong>Which option?</strong> HTTP verify for production multi-product deployments — no secret sprawl, and revocation semantics stay in one place. Local verify only where Fort and the consumer are deployed as one trusted unit. The Go <code>fort.Middleware</code> switches between the two automatically: it verifies locally when <code>Config.JWTSecret</code> is set, over HTTP otherwise.
+        </div>
+
+        <h2>Cookie vs. Bearer</h2>
+        <table class="docs">
+          <thead>
+            <tr><th>Mechanism</th><th>Best for</th><th>How</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>access_token cookie</td>
+              <td>Browsers and browser-like clients</td>
+              <td>Set (httpOnly) by login, otp/verify, 2fa/verify, reset, OAuth callback and refresh. Mutations additionally require <code>X-CSRF-Token</code> matching the <code>csrf_token</code> cookie.</td>
+            </tr>
+            <tr>
+              <td>Authorization: Bearer</td>
+              <td>Services, scripts, SDK server-side calls</td>
+              <td>Send the same JWT explicitly: <code>Authorization: Bearer &lt;jwt&gt;</code>. CSRF-exempt.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/refresh <span>— rotates the pair using the <code>refresh_token</code> cookie; sets three fresh cookies; 401 when invalid or expired</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/logout <span>— ends the current session and expires the cookies</span></div>
+        <div class="endpoint"><span class="method post">POST</span> /v1/auth/logout-everywhere <span>— revokes all refresh tokens for the user (also emits <a href="events.html"><code>fort.session.revoked</code></a>)</span></div>
+
+        <h2>Supabase / GoTrue compatibility</h2>
+        <p>Fort tokens are structurally compatible with Supabase GoTrue tokens — same <code>sub</code> (UUID user id), same <code>role</code>, same <code>iat</code>/<code>exp</code>. If your product previously consumed GoTrue tokens, switching to Fort requires only changing the issuer URL and secret; no payload-parsing changes. Fort can also run against a self-hosted GoTrue owning the same <code>auth.users</code> schema — see the repository docs for that layout.</p>
+
+        <h3>JWKS</h3>
+        <div class="endpoint"><span class="method get">GET</span> /.well-known/jwks.json</div>
+        <p>Because HS256 is symmetric, the JWKS endpoint discloses only metadata — algorithm and key id (<code>{"kty":"oct","alg":"HS256","kid":"fort-v1"}</code>), never key material. Do not build integrations on JWKS key-fetching today; use <code>POST /v1/token/verify</code>. If Fort is migrated to RS256 (the planned path if external third-party consumers appear), this endpoint will expose the real public key.</p>
+
+        <h2>Security rules</h2>
+        <div class="callout warn">
+          <strong>Reject <code>purpose != ""</code>.</strong> Challenge tokens (otp/2fa), action tokens, and the lock token are signed with the same key as sessions. Treating one as a session is the classic integration mistake — Fort's verify endpoint blocks it; local verifiers must too.
+        </div>
+        <div class="callout warn">
+          <strong>Derive identity from <code>sub</code>, never from the request.</strong> Fort itself never trusts a client-supplied user id, and neither should your services.
+        </div>
+        <div class="callout">
+          <strong>Expect generic errors and no enumeration.</strong> Fort returns generic codes (<code>unauthorized</code>, <code>invalid_credentials</code>) and answers <code>forgot</code>, <code>otp/send</code> and <code>login-methods</code> with 200 regardless of whether the account exists. Don't build UX that depends on distinguishing "wrong password" from "no such user" — Fort won't tell you.
+        </div>
+        <div class="callout">
+          <strong>Never log tokens.</strong> Access, refresh, challenge and platform tokens are all credentials. Fort masks them in its own logs; keep them out of yours.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© 2026 <a href="https://id8media.com">ID8 Media</a> · Fort — self-hosted auth &amp; identity gateway.</div>
+      <div class="footer-links">
+        <a href="../index.html">Product</a>
+        <a href="../compare.html">Compare</a>
+        <a href="index.html">Developers</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

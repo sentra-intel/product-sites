@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ID8 Media — Products</title>
+  <meta name="description" content="Product sites: Sentra (AI-powered intelligence platform), Fort (self-hosted auth gateway), Motor (operator control plane).">
+  <link rel="icon" href="./sentra/assets/icon.svg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { color-scheme: dark; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: hsl(222 47% 5%); color: hsl(210 20% 98%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; line-height: 1.6;
+    }
+    .wrap { max-width: 960px; width: 100%; text-align: center; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -0.02em; margin-bottom: 10px; }
+    .sub { color: hsl(217 10% 64%); margin-bottom: 48px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    a.card {
+      display: block; text-decoration: none; color: inherit; text-align: start;
+      background: hsl(220 26% 10%); border: 1px solid hsl(217 19% 27%);
+      border-radius: 12px; padding: 28px;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    a.card:hover { transform: translateY(-4px); }
+    a.card.sentra:hover { border-color: #D4A832; }
+    a.card.fort:hover { border-color: #7E96BA; }
+    a.card.motor:hover { border-color: #14B8A6; }
+    .mark { width: 40px; height: 40px; border-radius: 10px; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+    .sentra .mark { background: linear-gradient(135deg, #5373A3, #182E4C); color: #F5C842; }
+    .fort .mark { background: linear-gradient(135deg, #5373A3, #182E4C); color: #EEF2F7; }
+    .motor .mark { background: #0b1120; color: #2DD4BF; }
+    h2 { font-size: 1.2rem; margin-bottom: 6px; }
+    a.card p { color: hsl(217 10% 64%); font-size: 0.92rem; }
+    .tag { display: inline-block; margin-top: 14px; font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; }
+    .sentra .tag { color: #F5C842; }
+    .fort .tag { color: #A9B9D1; }
+    .motor .tag { color: #2DD4BF; }
+    footer { margin-top: 56px; color: hsl(217 10% 64%); font-size: 0.85rem; }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ID8 Media — Product Sites</h1>
+    <p class="sub">Three products. Self-hosted, API-first, built for serious operations.</p>
+    <div class="grid">
+      <a class="card sentra" href="./sentra/index.html">
+        <div class="mark">S</div>
+        <h2>Sentra</h2>
+        <p>The AI-powered national intelligence platform — real-time alerts, narratives, entity networks and bilingual briefings.</p>
+        <span class="tag">Explore Sentra →</span>
+      </a>
+      <a class="card fort" href="./fort/index.html">
+        <div class="mark">F</div>
+        <h2>Fort</h2>
+        <p>The self-hosted auth &amp; identity gateway — one auth authority for every product you ship, Supabase-compatible.</p>
+        <span class="tag">Explore Fort →</span>
+      </a>
+      <a class="card motor" href="./motor/index.html">
+        <div class="mark">M</div>
+        <h2>Motor</h2>
+        <p>The operator's control plane — one cockpit for infra control and observability, MCP-native for AI agents.</p>
+        <span class="tag">Explore Motor →</span>
+      </a>
+    </div>
+    <footer>© 2026 <a href="https://id8media.com">ID8 Media</a></footer>
+  </div>
+</body>
+</html>
