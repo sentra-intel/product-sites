@@ -691,3 +691,29 @@ table.docs td:first-child { font-family: var(--font-mono); font-size: 0.84rem; c
 
 .build-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .build-pills .pill { font-size: 0.85rem; padding: 7px 15px; }
+
+/* ---------- Capability-toggle / tenant mock (dynamism section) ---------- */
+
+.cfg { display: flex; flex-direction: column; gap: 10px; }
+.cfg-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--raised); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; font-size: 0.85rem;
+}
+.cfg-row .st { margin-inline-start: auto; font-size: 0.68rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.cfg-row .st.on { color: var(--ok); }
+.cfg-row .st.ready { color: var(--gold-500); }
+.sw { width: 34px; height: 20px; border-radius: 999px; background: var(--border);
+  position: relative; flex-shrink: 0; }
+.sw::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: all .2s ease; }
+.sw.on { background: color-mix(in srgb, var(--gold-500) 55%, transparent); }
+.sw.on::after { inset-inline-start: 17px; background: var(--gold-400); }
+
+.tenant-row { display: flex; gap: 8px; margin-top: 14px; }
+.tenant { flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 6px; font-size: 0.72rem; color: var(--muted); background: var(--surface); }
+.tenant.on { border-color: color-mix(in srgb, var(--gold-500) 55%, var(--border));
+  color: var(--foreground); background: color-mix(in srgb, var(--gold-500) 7%, var(--surface)); }
+.tenant .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-inline-end: 6px; }
