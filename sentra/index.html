@@ -8,6 +8,7 @@
   <link rel="icon" href="./assets/icon.svg">
   <link rel="stylesheet" href="./assets/site.css">
   <script src="./assets/site.js" defer></script>
+  <script src="./assets/meet.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -32,7 +33,6 @@
         <a class="btn btn-outline" href="./developers/index.html">Explore the docs</a>
       </div>
       <div class="cta-row" aria-label="Key facts">
-        <span class="pill">Point it at any subject</span>
         <span class="pill">Real-time</span>
         <span class="pill">Bilingual EN/AR</span>
         <span class="pill">Self-hostable</span>
@@ -83,7 +83,32 @@
     </div>
   </section>
 
-  <section class="section alt">
+  <section class="section" id="meet">
+    <div class="container">
+      <div class="section-head center reveal">
+        <p class="eyebrow">Try it right here</p>
+        <h2>Say hello to Sentra</h2>
+        <p class="lead" style="margin-inline:auto">A two-minute guided introduction — pick your business and see what Sentra would put on your desk.</p>
+      </div>
+      <div class="meet-stage">
+        <div class="session-bar">
+          <span class="live-dot"></span><span><b>Sentra</b> · <span id="msb-label">live session</span></span>
+          <span id="msb-geo"></span>
+          <span class="clock" id="msb-clock"></span>
+          <button type="button" class="skip-btn" id="msb-skip">Skip intro →</button>
+        </div>
+        <div class="conv" role="log" aria-live="polite"></div>
+        <div class="action-area"></div>
+      </div>
+      <svg width="0" height="0" style="position:absolute"><defs>
+        <linearGradient id="meetggrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#B38A22"/><stop offset="100%" stop-color="#F5C842"/>
+        </linearGradient>
+      </defs></svg>
+    </div>
+  </section>
+
+  <section class="section alt" id="after-meet">
     <div class="container">
       <div class="stats">
         <div class="stat"><div class="num"><span data-count="10000" data-suffix="+">0</span></div><div class="label">signals processed daily</div></div>
@@ -94,49 +119,9 @@
     </div>
   </section>
 
-  <section class="section">
-    <div class="container">
-      <div class="section-head center reveal">
-        <p class="eyebrow">See yourself in Sentra</p>
-        <h2>Point it at your world.<br>Every screen reframes to it.</h2>
-        <p class="lead">A scope can be a country, a competitor, a brand, a product line or a crisis. Pick yours — the dashboard, map, feed, entity networks and AI copilot instantly show only that world.</p>
-      </div>
-      <div class="q-cards reveal-stagger">
-        <div class="q-card">
-          <div class="q">You run a government desk</div>
-          <div class="a">You open one bilingual brief at 06:00, see your reputation posture at a glance, and pin what the principal must see. When a crisis breaks, one switch turns the platform into a war room — with a briefing deck and spokesperson talking points generated for you.</div>
-          <span class="cap">Executive desk · Daily brief · War Mode · Talking points</span>
-        </div>
-        <div class="q-card">
-          <div class="q">You watch your market</div>
-          <div class="a">A scope per competitor. Your Reputation Index (0–100) with what's driving it, Share of Voice against rivals, influencer tracking, and side-by-side competitor scorecards — then ask the copilot "why did our reach spike?"</div>
-          <span class="cap">Reputation Index · Share of Voice · Compare · Influencers</span>
-        </div>
-        <div class="q-card">
-          <div class="q">You run an operation or event</div>
-          <div class="a">A live situation map with threat layers, breaking developments clustered as they emerge, stakeholder pulse showing who's supporting and who's shifting — and a wall-screen mode for the ops room.</div>
-          <span class="cap">Situation Map · Breaking News · Stakeholder Pulse · Wall display</span>
-        </div>
-      </div>
-    </div>
-  </section>
+  
 
-  <section class="section alt">
-    <div class="container">
-      <div class="section-head center reveal">
-        <p class="eyebrow">Buy answers, not dashboards</p>
-        <h2>Questions Sentra answers before you finish asking</h2>
-      </div>
-      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
-        <div class="tile"><span class="glyph">📊</span><div><h4>"What's my reputation posture today?"</h4><p>A 0–100 Reputation Index with the narratives driving it up or down.</p></div></div>
-        <div class="tile"><span class="glyph">🗣</span><div><h4>"Who is driving this story?"</h4><p>Instant dossiers and network graphs of the people and organizations behind any narrative.</p></div></div>
-        <div class="tile"><span class="glyph">📣</span><div><h4>"How loud are my competitors?"</h4><p>Share of Voice across news, social and your channels — versus the rivals you name.</p></div></div>
-        <div class="tile"><span class="glyph">🧭</span><div><h4>"How did our announcement land?"</h4><p>Sentiment, coverage and trend spikes tracked live, with anomaly detection.</p></div></div>
-        <div class="tile"><span class="glyph">🤝</span><div><h4>"Who's with us — who's shifting?"</h4><p>Stakeholder pulse maps supporters and opponents, and flags position changes.</p></div></div>
-        <div class="tile"><span class="glyph">🕳</span><div><h4>"What are we missing?"</h4><p>Coverage gap detection flags thin days and blind spots — know what you didn't catch.</p></div></div>
-      </div>
-    </div>
-  </section>
+  
 
   <section class="section">
     <div class="container">
@@ -144,9 +129,9 @@
         <div>
           <p class="kicker">Dynamic by design</p>
           <h3>Two clients, two products — one engine</h3>
-          <p>Sentra is not a fixed product. Every deployment is composed from capabilities: switch surfaces on or off per tenant, enable purpose-built verticals for a season or a crisis, and give each client its own branding, sources and desks — live, from the admin console. A single admin completes setup in under 30 minutes.</p>
+          <p>Sentra is not a fixed product. Your deployment is composed from capabilities: switch surfaces on or off, enable purpose-built verticals for a season or a crisis, and shape branding, sources and desks around your organization — live, from the admin console. A single admin completes setup in under 30 minutes.</p>
           <ul style="list-style:none; padding:0; margin-top:16px">
-            <li style="padding:6px 0; color:var(--muted)">✓ &nbsp;Toggle a capability per tenant — hot-reloads in seconds, no restart</li>
+            <li style="padding:6px 0; color:var(--muted)">✓ &nbsp;Toggle any capability on or off — hot-reloads in seconds, no restart</li>
             <li style="padding:6px 0; color:var(--muted)">✓ &nbsp;Isolated scopes — each with its own source wiring, briefings, branding and leaderboards</li>
             <li style="padding:6px 0; color:var(--muted)">✓ &nbsp;A library of verticals ready to enable — event risk, diplomatic calendar, regional-media analysis, historical replay</li>
             <li style="padding:6px 0; color:var(--muted)">✓ &nbsp;Need a new one? Describe it in a sentence — the agentic scaffolder builds the service, bilingual prompts and UI</li>
@@ -154,12 +139,12 @@
         </div>
         <div class="panel">
           <div class="cfg" aria-hidden="true">
-            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gold-500)">Tenant A — Government desk</div>
+            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gold-500)">Deployment A — Government desk</div>
             <div class="cfg-row"><span class="sw on"></span> Executive Desk &amp; Briefings <span class="st on">Live</span></div>
             <div class="cfg-row"><span class="sw on"></span> Situation Map <span class="st on">Live</span></div>
             <div class="cfg-row"><span class="sw on"></span> Diplomatic Calendar <span class="st on">Live</span></div>
             <div class="cfg-row"><span class="sw"></span> Event Risk Monitor <span class="st">Off</span></div>
-            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--navy-300); margin-top:10px">Tenant B — Event authority</div>
+            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--navy-300); margin-top:10px">Deployment B — Event authority</div>
             <div class="cfg-row"><span class="sw on"></span> Event Risk Monitor <span class="st on">Live</span></div>
             <div class="cfg-row"><span class="sw on"></span> Alerts &amp; Watchlists <span class="st on">Live</span></div>
             <div class="cfg-row"><span class="sw"></span> Diplomatic Calendar <span class="st ready">Ready to enable</span></div>
@@ -440,33 +425,18 @@
     </div>
   </section>
 
-  <section class="section">
-    <div class="container">
-      <div class="section-head center reveal">
-        <p class="eyebrow">One platform, many missions</p>
-        <h2>The same engine becomes a different product for each client</h2>
-        <p class="lead" style="margin-inline:auto">Deployments ship as configured profiles — an aviation carrier with brand, route and competitor scopes; a government desk with ministerial units; an event authority with a season-long risk monitor. Same engine, different product.</p>
-      </div>
-      <div class="grid grid-3 reveal-stagger" style="margin-top:36px">
-        <div class="card"><div class="icon">🏛</div><h3>Government &amp; diplomacy</h3><p>Ministerial desks, daily bilingual briefs, diplomatic calendars, accredited-source trust posture.</p></div>
-        <div class="card"><div class="icon">✈️</div><h3>Aviation &amp; national carriers</h3><p>Brand and route-region monitoring, incident response, influencer and passenger sentiment.</p></div>
-        <div class="card"><div class="icon">🏟</div><h3>Sports &amp; major events</h3><p>Purpose-built event risk monitors, venue and region watchlists, live threat pulses through the season.</p></div>
-        <div class="card"><div class="icon">🎙</div><h3>Media &amp; broadcast</h3><p>What TV and press are saying — transcribed, searchable, alertable in real time.</p></div>
-        <div class="card"><div class="icon">🏢</div><h3>Corporate &amp; brand</h3><p>Reputation and crisis management, competitor narratives, market and influencer intelligence.</p></div>
-        <div class="card"><div class="icon">🧩</div><h3>Your mission</h3><p>Describe the capability you need in one sentence — the agentic scaffolder generates the service, bilingual prompts and UI section, ready to enable.</p></div>
-      </div>
-    </div>
-  </section>
+  
 
   <section class="section">
     <div class="container">
       <div class="section-head center reveal">
         <p class="eyebrow">Trusted with sensitive work</p>
-        <h2>Every client isolated, by architecture</h2>
-        <p class="lead" style="margin-inline:auto">One platform serves many clients — each with fully isolated data, sources, roles and branding. Proven at the bar of a national government production deployment.</p>
+        <h2>Yours alone, by architecture</h2>
+        <p class="lead" style="margin-inline:auto">A dedicated deployment on your infrastructure — your data never shares an instance with anyone. Isolated scopes for every department, server-enforced roles, a full audit trail. Proven at the bar of a national government production deployment.</p>
       </div>
       <div class="sec-badges reveal">
-        <span class="pill gold">Full tenant isolation per unit</span>
+        <span class="pill gold">Dedicated single-client deployment</span>
+        <span class="pill">Isolated scopes per department</span>
         <span class="pill">Role-based access, server-enforced</span>
         <span class="pill">2FA · OTP · SSO · magic link</span>
         <span class="pill">Complete audit trail</span>
@@ -475,24 +445,11 @@
         <span class="pill">Row-level security on every table</span>
         <span class="pill">Self-hosted — your infrastructure</span>
       </div>
-    </div>
-  </section>
-
-  <section class="section alt">
-    <div class="container">
-      <div class="section-head center reveal">
-        <p class="eyebrow">Why Sentra</p>
-        <h2>Yours to run, yours to extend</h2>
-      </div>
-      <div class="grid grid-2 reveal-stagger" style="margin-top:36px">
-        <div class="tile"><span class="glyph">🔒</span><div><h4>Sovereign by design</h4><p>Self-hosted on your infrastructure — your data never lives in someone else's cloud.</p></div></div>
-        <div class="tile"><span class="glyph">🌐</span><div><h4>Arabic-native</h4><p>Every artifact produced in English and Arabic with a full RTL interface — not a translation layer.</p></div></div>
-        <div class="tile"><span class="glyph">⚡</span><div><h4>Real-time by architecture</h4><p>Streaming WebSocket delivery from the database outward — no polling, no digests.</p></div></div>
-        <div class="tile"><span class="glyph">🧩</span><div><h4>Modular capabilities</h4><p>Enable exactly what each client needs — and scaffold entirely new capabilities from one command or one sentence.</p></div></div>
-      </div>
       <p style="text-align:center; margin-top:32px"><a href="./compare.html">See how Sentra compares to Dataminr, Meltwater and others →</a></p>
     </div>
   </section>
+
+  
 
   <section class="section" style="padding-block:56px">
     <div class="container">
@@ -545,7 +502,7 @@ wss://sentra.example.com/ws?ticket=&lt;one-time-ticket&gt;</code></pre>
   <section class="cta-band">
     <div class="container">
       <h2>See Sentra on your own data</h2>
-      <p style="margin:12px 0 28px">A live demo takes 30 minutes. The deployment is yours to keep — on your infrastructure, under your control.</p>
+      <p style="margin:12px 0 28px">One short call, on your own topics. The deployment is yours to keep — on your infrastructure, under your control.</p>
       <a class="btn btn-primary" href="https://id8media.com/en/contact">Request a demo</a>
     </div>
   </section>

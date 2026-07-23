@@ -717,3 +717,220 @@ table.docs td:first-child { font-family: var(--font-mono); font-size: 0.84rem; c
 .tenant.on { border-color: color-mix(in srgb, var(--gold-500) 55%, var(--border));
   color: var(--foreground); background: color-mix(in srgb, var(--gold-500) 7%, var(--surface)); }
 .tenant .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-inline-end: 6px; }
+
+/* ================= Meet Sentra — interactive section ================= */
+
+#meet .meet-stage {
+  max-height: 74vh; min-height: 500px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--border); border-radius: 18px;
+  background:
+    radial-gradient(600px 260px at 50% 0%, color-mix(in srgb, var(--navy-400) 14%, transparent), transparent 70%),
+    color-mix(in srgb, var(--background) 75%, var(--surface));
+  padding: 20px 22px 26px;
+  box-shadow: 0 30px 80px -40px rgba(0,0,0,.6);
+}
+#meet .session-bar {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 15px; margin-bottom: 22px;
+  background: color-mix(in srgb, var(--background) 88%, transparent); backdrop-filter: blur(8px);
+}
+#meet .session-bar b { color: var(--gold-400); font-weight: 700; }
+#meet .session-bar .clock { margin-inline-start: auto; color: var(--foreground); }
+#meet[dir="rtl"] .session-bar { letter-spacing: 0; }
+#meet[dir="rtl"] { font-family: var(--font-arabic); }
+
+#meet .conv { display: flex; flex-direction: column; gap: 16px; }
+#meet .row { display: flex; gap: 12px; align-items: flex-end; animation: meet-rise .5s cubic-bezier(.2,.7,.3,1) both; }
+#meet .row.me { justify-content: flex-end; }
+@keyframes meet-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+#meet .avatar-s {
+  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+  background: linear-gradient(140deg, var(--navy-400), var(--navy-700));
+  border: 1px solid color-mix(in srgb, var(--gold-500) 35%, var(--border));
+  display: flex; align-items: center; justify-content: center;
+}
+#meet .avatar-s img { width: 21px; height: 21px; }
+#meet .msg-col { display: flex; flex-direction: column; min-width: 0; max-width: 640px; }
+#meet .row.me .msg-col { align-items: flex-end; }
+#meet .stamp { font-family: var(--font-mono); font-size: .62rem; color: var(--muted); letter-spacing: .06em; margin-bottom: 4px; opacity: .8; }
+#meet .row.me .stamp { text-align: end; }
+#meet .bubble {
+  border-radius: 16px; padding: 13px 18px; font-size: 1rem; line-height: 1.6;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--border); backdrop-filter: blur(6px);
+}
+#meet .row.bot .bubble { border-end-start-radius: 6px; }
+#meet .row.me .bubble {
+  background: linear-gradient(140deg, var(--navy-500), var(--navy-700));
+  color: var(--primary-foreground); border-color: var(--navy-400); border-end-end-radius: 6px;
+}
+#meet .row.wide { display: block; }
+#meet .row.wide .bubble { max-width: 100%; background: none; border: none; padding: 0; backdrop-filter: none; }
+#meet .bubble.hero-line {
+  font-size: clamp(1.4rem, 3.4vw, 1.9rem); font-weight: 800; letter-spacing: -.01em;
+  background: none; border: none; padding: 2px;
+}
+#meet .bubble.hero-line .accent {
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-400), #fff, var(--gold-400), var(--gold-500));
+  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 5.5s linear infinite;
+}
+#meet .rx { font-family: var(--font-mono); font-size: .78rem; color: var(--gold-500); letter-spacing: .04em; }
+#meet .rx::after { content: "▍"; animation: meet-caret 1s steps(1) infinite; }
+@keyframes meet-caret { 50% { opacity: 0; } }
+
+#meet .action-area { margin-top: 18px; }
+#meet .choices { display: flex; flex-wrap: wrap; gap: 10px; animation: meet-rise .45s ease both; }
+#meet .choices button {
+  background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--foreground);
+  border: 1px solid var(--border); border-radius: 999px; padding: 10px 20px;
+  font-size: .93rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .18s ease;
+}
+#meet .choices button:hover { border-color: var(--gold-500); color: var(--gold-400); transform: translateY(-2px); }
+#meet .choices button.primary { background: linear-gradient(140deg, var(--gold-400), var(--gold-600)); color: var(--navy-800); border-color: transparent; }
+#meet .biz-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; animation: meet-rise .45s ease both; }
+@media (max-width: 640px) { #meet .biz-grid { grid-template-columns: repeat(2, 1fr); } }
+#meet .biz-grid button {
+  background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 10px 13px; cursor: pointer; font-family: inherit;
+  color: var(--foreground); text-align: center; transition: all .18s ease;
+}
+#meet .biz-grid button .ic { font-size: 1.6rem; display: block; margin-bottom: 7px; transition: transform .18s ease; }
+#meet .biz-grid button .lb { font-size: .85rem; font-weight: 600; line-height: 1.35; }
+#meet .biz-grid button:hover { border-color: var(--gold-500); transform: translateY(-3px); }
+#meet .biz-grid button:hover .ic { transform: scale(1.16); }
+#meet .conv-input { display: flex; gap: 10px; animation: meet-rise .45s ease both; }
+#meet .conv-input input {
+  flex: 1; background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--border); border-radius: 999px;
+  color: var(--foreground); padding: 13px 20px; font-size: 1rem; font-family: inherit; outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+#meet .conv-input input:focus { border-color: var(--gold-500); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold-500) 15%, transparent); }
+#meet .conv-input button {
+  background: linear-gradient(140deg, var(--gold-400), var(--gold-600)); color: var(--navy-800);
+  border: none; border-radius: 999px; width: 50px; height: 50px; flex-shrink: 0;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform .15s ease;
+}
+#meet .conv-input button:hover { transform: scale(1.07); }
+#meet[dir="rtl"] .conv-input button svg { transform: scaleX(-1); }
+
+/* mind animation inside the stage: full width, no breakout */
+#meet .mind-scene { width: 100%; margin-block: 8px; }
+#meet .mind-scene svg { width: 100%; height: auto; display: block; }
+#meet .mind-scene .msrc { fill: color-mix(in srgb, var(--surface) 94%, transparent); stroke: var(--border); }
+#meet .mind-scene text { fill: var(--foreground); font-family: var(--font-sans); font-size: 12px; }
+#meet .mind-scene .lbl { fill: var(--muted); font-size: 10px; }
+#meet .mind-scene .cat { fill: var(--muted); font-size: 10.5px; letter-spacing: .12em; font-family: var(--font-mono); }
+#meet .mind-scene .lane { stroke: color-mix(in srgb, var(--navy-300) 45%, transparent); stroke-width: 1.2; stroke-dasharray: 4 5; fill: none; }
+#meet .mind-scene .p { fill: var(--gold-400); filter: drop-shadow(0 0 5px var(--gold-400)); }
+#meet .mind-scene .pa { animation: mtr-a 2.4s linear infinite; }
+#meet .mind-scene .pb { animation: mtr-b 2.4s linear infinite .4s; }
+#meet .mind-scene .pc { animation: mtr-c 2.4s linear infinite .8s; }
+#meet .mind-scene .pd { animation: mtr-d 2.4s linear infinite 1.2s; }
+#meet .mind-scene .pe { animation: mtr-e 2.4s linear infinite 1.6s; }
+#meet .mind-scene .pf { animation: mtr-f 2.4s linear infinite 2s; }
+#meet .mind-core { transform-origin: 400px 150px; animation: pulse-subtle 3s ease-in-out infinite; }
+#meet .mind-ring { transform-origin: 400px 150px; animation: meet-spin 14s linear infinite; }
+#meet .mind-wave { transform-origin: 400px 150px; animation: meet-wave 2.8s ease-out infinite; opacity: 0; }
+#meet .mind-wave.w2 { animation-delay: 1.4s; }
+@keyframes meet-wave { 0% { transform: scale(.62); opacity: .55; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes meet-spin { to { transform: rotate(360deg); } }
+@keyframes mtr-a { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,120px);opacity:0} }
+@keyframes mtr-b { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,72px);opacity:0} }
+@keyframes mtr-c { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,24px);opacity:0} }
+@keyframes mtr-d { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,-24px);opacity:0} }
+@keyframes mtr-e { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,-72px);opacity:0} }
+@keyframes mtr-f { 0%{transform:translate(0,0);opacity:0} 8%{opacity:1} 88%{opacity:1} 100%{transform:translate(236px,-120px);opacity:0} }
+#meet .out-chip { animation: fade-in 1s ease both; }
+
+/* scenario dashboard inside the stage */
+#meet .scenario {
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  animation: meet-rise .55s ease both; width: 100%;
+}
+#meet .scenario .head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold-500) 9%, var(--raised)), var(--raised));
+}
+#meet .scenario .head .t { font-weight: 700; }
+#meet .scenario .head .live { margin-inline-start: auto; display: flex; align-items: center; gap: 7px; font-size: .66rem; color: var(--ok); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+#meet .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 15px 17px 2px; }
+@media (max-width: 640px) { #meet .kpis { grid-template-columns: 1fr; } }
+#meet .kpi { background: var(--background); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; }
+#meet .kpi b { display: block; font-size: 1.3rem; font-weight: 800; color: var(--gold-400); }
+#meet .kpi span { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+#meet .scenario .body { padding: 17px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+@media (max-width: 860px) {
+  #meet .scenario .body { grid-template-columns: 1fr; }
+  #meet .scenario .body > .sc-block { grid-column: 1 / -1 !important; }
+}
+#meet .sc-block { background: var(--background); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; }
+#meet .sc-block h5 { font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+#meet .sc-block h5 .fdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-500); margin-inline-end: 7px; vertical-align: middle; }
+#meet .gauge { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+#meet .gauge svg { transform: rotate(-90deg); }
+#meet .gauge .track { stroke: var(--raised); }
+#meet .gauge .val { stroke: url(#meetggrad); stroke-linecap: round; animation: meet-gauge 1.3s cubic-bezier(.2,.7,.3,1) both .3s; }
+@keyframes meet-gauge { from { stroke-dashoffset: 226; } }
+#meet .gauge .num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; font-weight: 800; color: var(--gold-400); }
+#meet .gauge-row { display: flex; align-items: center; gap: 14px; }
+#meet .rep-drv { font-size: .78rem; color: var(--muted); line-height: 1.6; }
+#meet .sov .bar-row { display: flex; align-items: center; gap: 8px; font-size: .74rem; color: var(--muted); margin-block: 7px; }
+#meet .sov .bar-row .nm { min-width: 88px; }
+#meet .sov .bar { flex: 1; height: 8px; border-radius: 5px; background: var(--raised); overflow: hidden; }
+#meet .sov .bar i { display: block; height: 100%; border-radius: 5px; background: var(--navy-400); animation: grow-x 1.1s cubic-bezier(.2,.7,.3,1) both .25s; transform-origin: left; }
+#meet[dir="rtl"] .sov .bar i { transform-origin: right; }
+#meet .sov .bar-row.you .bar i { background: linear-gradient(90deg, var(--gold-600), var(--gold-400)); }
+#meet .sov .bar-row.you .nm { color: var(--gold-400); font-weight: 700; }
+#meet .trend-mini { display: flex; align-items: center; gap: 9px; font-size: .76rem; color: var(--muted); margin-block: 8px; }
+#meet .trend-mini .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--foreground); }
+#meet .trend-mini .spark { width: 70px; height: 7px; border-radius: 4px; background: var(--raised); overflow: hidden; flex-shrink: 0; }
+#meet .trend-mini .spark i { display: block; height: 100%; background: linear-gradient(90deg, var(--navy-400), var(--gold-500)); animation: grow-x 1s ease both .3s; transform-origin: left; }
+#meet[dir="rtl"] .trend-mini .spark i { transform-origin: right; }
+#meet .trend-mini .d { font-weight: 700; min-width: 50px; text-align: end; font-family: var(--font-mono); font-size: .7rem; }
+#meet .trend-mini .d.up { color: var(--ok); } #meet .trend-mini .d.dn { color: var(--bad); }
+#meet .senti { display: flex; height: 11px; border-radius: 7px; overflow: hidden; margin-bottom: 9px; }
+#meet .senti i { display: block; height: 100%; }
+#meet .senti .pos { background: var(--ok); } #meet .senti .neu { background: var(--navy-300); } #meet .senti .neg { background: var(--bad); }
+#meet .senti-leg { display: flex; gap: 13px; font-size: .68rem; color: var(--muted); flex-wrap: wrap; }
+#meet .senti-leg b { color: var(--foreground); }
+#meet .senti-leg .sw2 { display: inline-block; width: 8px; height: 8px; border-radius: 3px; margin-inline-end: 5px; }
+#meet .sc-alert { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; margin-bottom: 8px; font-size: .8rem; background: color-mix(in srgb, var(--surface) 92%, transparent); animation: meet-rise .5s ease both; }
+#meet .sc-alert:nth-child(3) { animation-delay: .16s; }
+#meet .sc-alert:nth-child(4) { animation-delay: .3s; }
+#meet .sc-alert .meta { color: var(--muted); font-size: .68rem; margin-top: 3px; }
+#meet .sc-alert .sev.critical { animation: ping 1.6s ease-out infinite; display: inline-block; }
+#meet .netbox svg { width: 100%; height: auto; display: block; }
+#meet .act { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: .78rem; }
+#meet .act:last-child { border-bottom: none; }
+#meet .act .ab { flex-shrink: 0; font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; margin-top: 1px; }
+#meet .ab.you  { background: color-mix(in srgb, var(--gold-500) 16%, transparent); color: var(--gold-400); border: 1px solid color-mix(in srgb, var(--gold-500) 40%, transparent); }
+#meet .ab.ai   { background: color-mix(in srgb, var(--navy-400) 30%, transparent); color: var(--navy-200); border: 1px solid var(--border); }
+#meet .ab.auto { background: color-mix(in srgb, #22C55E 14%, transparent); color: var(--ok); border: 1px solid color-mix(in srgb, #22C55E 35%, transparent); }
+#meet .sc-brief { font-size: .83rem; color: var(--muted); line-height: 1.65; }
+#meet .sc-brief strong { color: var(--foreground); }
+#meet .sc-note { padding: 9px 18px 14px; font-size: .7rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  #meet .row, #meet .choices, #meet .biz-grid, #meet .conv-input, #meet .scenario, #meet .sc-alert { animation: none !important; }
+  #meet .mind-scene .p, #meet .mind-wave { animation: none !important; opacity: .5; }
+}
+
+/* skip / input-skip controls in the Meet stage */
+#meet .skip-btn {
+  margin-inline-start: 10px; background: none; border: 1px solid var(--border);
+  color: var(--muted); font-family: var(--font-mono); font-size: .6rem;
+  letter-spacing: .08em; text-transform: uppercase; border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; transition: all .15s ease;
+}
+#meet .skip-btn:hover { color: var(--gold-400); border-color: var(--gold-500); }
+#meet .input-skip {
+  background: none; border: none; color: var(--muted); font-size: .8rem;
+  cursor: pointer; margin-top: 9px; text-decoration: underline; font-family: inherit;
+}
+#meet .input-skip:hover { color: var(--foreground); }
